@@ -30,18 +30,6 @@ class BaseDAG:
     ####################
 
     # INFORMATION GATHERING #
-
-    def get_nodes(self):
-        """
-        Returns the list of nodes contained within the Bayesian Network architecture
-
-        Returns
-        -------
-        list
-        """
-
-        raise NotImplementedError
-
     def get_edges(self):
         """
         Returns the edges contained within the Bayesian Network architecture
@@ -51,6 +39,7 @@ class BaseDAG:
 
     # EDGE MODIFICATION #
 
+    # TODO - Create dictionary to use variable names instead of indexes? or at least have both options
     def add_edge(self, node_1_id, node_2_id):
         """
         Creates an edge in the Bayesian Network architecture directed from Node 1 (node_1_id) to Node 2 (node_2_id).

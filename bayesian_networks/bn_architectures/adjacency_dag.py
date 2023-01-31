@@ -48,12 +48,18 @@ class AdjacencyDAG(BaseDAG):
         # Create a numpy array to store the edges
         self.adjacency_matrix = np.identity(len(self.variables))
 
-    # TODO 
-    def get_nodes(self):
-        pass
-
     def get_edges(self):
-        pass
+        """
+        Gets the edges contained within the Directed Acyclic Graph (DAG)
+
+        The edges are represented as an adjacency matrix.
+
+        Returns
+        -------
+        np.ndarray
+        """
+
+        return self.adjacency_matrix
 
     #####################
     # EDGE MODIFICATION #
