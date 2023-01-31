@@ -1,11 +1,11 @@
-# BAYESIAN NETWORK GS SPEEDUP #
+# BAYESIAN NETWORK - NN GS SPEEDUP #
 # Developed by Luna Jimenez Fernandez
 # Based on the work of Wenfeng Zhang et al.
 
-class BaseBN:
+class BaseDAG:
     """
-    `BaseBN` represents an abstract definition of a Bayesian Network structure (more especifically, the
-    DAG or Directed Acyclic Graph representing the conections between nodes in the Bayesian Network)
+    `BaseDAG` represents an abstract definition of a Bayesian Network structure (more especifically, the
+    DAG or Directed Acyclic Graph representing the connections between nodes in the Bayesian Network)
 
     Each Bayesian Network architecture implementation must contain:
         - A list of nodes (variables) contained within the architecture
@@ -54,7 +54,6 @@ class BaseBN:
     def add_edge(self, node_1_id, node_2_id):
         """
         Creates an edge in the Bayesian Network architecture directed from Node 1 (node_1_id) to Node 2 (node_2_id).
-
         The node IDs are defined by their order in the internal node list
 
         Parameters
@@ -63,6 +62,10 @@ class BaseBN:
             ID of the first node / variable
         node_2_id : int
             ID of the second node / variable
+
+        Return
+        ------
+        bool
         """
 
         raise NotImplementedError
@@ -70,9 +73,7 @@ class BaseBN:
     def remove_edge(self, node_1_id, node_2_id):
         """
         Removes an edge in the Bayesian Network architecture directed from Node 1 (node_1_id) to Node 2 (node_2_id),
-        if it exists
-
-        The node IDs are defined by their order in the internal node list
+        if it exists. The node IDs are defined by their order in the internal node list
 
         Parameters
         ----------
@@ -80,6 +81,10 @@ class BaseBN:
             ID of the first node / variable
         node_2_id : int
             ID of the second node / variable
+
+        Return
+        ------
+        bool
         """
 
         raise NotImplementedError
@@ -87,9 +92,7 @@ class BaseBN:
     def invert_edge(self, node_1_id, node_2_id):
         """
         Inverts an edge in the Bayesian Network architecture between Node 1 (node_1_id) and Node 2 (node_2_id),
-        if it exists
-
-        The node IDs are defined by their order in the internal node list
+        if it exists. The node IDs are defined by their order in the internal node list
 
         Parameters
         ----------
@@ -97,6 +100,10 @@ class BaseBN:
             ID of the first node / variable
         node_2_id : int
             ID of the second node / variable
+
+        Return
+        ------
+        bool
         """
 
         raise NotImplementedError

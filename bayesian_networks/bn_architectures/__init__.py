@@ -9,4 +9,4 @@ all the edges (and their directions) between the variables.
 These definitions are to be used by the rest of the project
 """
 
-from base_bn import BaseBN
+from .base_dag import BaseDAG
