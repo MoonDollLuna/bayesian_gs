@@ -2,7 +2,7 @@
 # Developed by Luna Jimenez Fernandez
 # Based on the work of Wenfeng Zhang et al.
 
-from bayesian_networks import BaseDAG
+from bn_structures import BaseDAG
 import numpy as np
 
 from typing import List
