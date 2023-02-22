@@ -10,4 +10,4 @@ This module contains problem-agnostic definitions of **Bayesian Networks**, incl
 These definitions are to be used by the rest of the project
 """
 
-from .bn_architectures import BaseDAG
+from .dag_architectures import BaseDAG

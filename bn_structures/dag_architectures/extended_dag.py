@@ -4,7 +4,6 @@
 
 # IMPORTS #
 import networkx as nx
-import numpy as np
 from pgmpy.base import DAG
 
 
@@ -16,11 +15,13 @@ class ExtendedDAG(DAG):
     Proposed DAG implementations must extend this class and implement all methods.
     """
 
+    # EDGE MANIPULATION #
+
     def remove_edge(self, u, v):
         """
         Removes an edge between u and v.
 
-        The nodes u and v will remain in the graph, even if they no longer have any
+        The nodes u and v will remain in the graph, even if they no longer have any edges
 
         Parameters
         ----------
