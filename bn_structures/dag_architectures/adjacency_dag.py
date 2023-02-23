@@ -86,7 +86,7 @@ class AdjacencyDAG(ExtendedDAG):
 
         The nodes u and v will be automatically added if they are not already in the graph.
 
-        This method can only be called if update_adjacency_matrix was called previously.
+        This method can only be called if initialize_adjacency_matrix was called previously.
 
         Parameters
         ----------
@@ -115,7 +115,7 @@ class AdjacencyDAG(ExtendedDAG):
 
         The nodes u and v will remain in the graph, even if they no longer have any edges.
 
-        This method can only be called if update_adjacency_matrix was called previously.
+        This method can only be called if initialize_adjacency_matrix was called previously.
 
         Parameters
         ----------
@@ -140,7 +140,7 @@ class AdjacencyDAG(ExtendedDAG):
         Inverts the edge between u and v, replacing it with an edge between v and u.
         Also reflects the change within the adjacency matrix.
 
-        This method can only be called if update_adjacency_matrix was called previously.
+        This method can only be called if initialize_adjacency_matrix was called previously.
 
         Parameters
         ----------
@@ -172,7 +172,7 @@ class AdjacencyDAG(ExtendedDAG):
 
         Returns
         -------
-        np.ndarray
+        torch.Tensor
         """
 
         return torch.from_numpy(self.adjacency_matrix)
