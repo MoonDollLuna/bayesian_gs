@@ -10,3 +10,5 @@ These definitions are to be used by the rest of the project
 """
 
 from .extended_dag import ExtendedDAG
+from .adjacency_dag import AdjacencyDAG
+from .node_adjacency_dag import NodeAdjacencyDAG

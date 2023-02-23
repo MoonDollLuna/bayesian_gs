@@ -91,7 +91,7 @@ class NodeAdjacencyDAG(ExtendedDAG):
                 # Dictionary index
                 self.variable_index_dict[list(self)[index]] = index
 
-                # Adjacencty list
+                # Adjacency list
                 adjacency_list = np.zeros(len(self))
                 adjacency_list[index] = -1
                 self.node_adjacency_list.append(adjacency_list)
@@ -211,4 +211,3 @@ class NodeAdjacencyDAG(ExtendedDAG):
             adjacency = self.node_adjacency_list[variable]
 
         return torch.from_numpy(adjacency)
-
