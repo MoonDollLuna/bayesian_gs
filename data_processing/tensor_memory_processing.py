@@ -13,10 +13,11 @@ import torch
 class TensorMemory:
     """
     Memory storing the tensors used to train the neural networks, along with the expected scores
-    for each tensor. These are stored in (tensor, score) format, and used for training.
+    for each tensor. These are stored in two separate synchronized queues (a Tensor queue and a float queue),
+    and used for training.
 
     This memory may optionally have a maximum size. If specified, once the memory is full the oldest
-    (tensor, score) pairs will be removed in FIFO order.
+    Tensor and score pairs will be removed in FIFO order.
 
     This class implements methods to insert, extract and sample the memory directly
     or in randomized chunks.
@@ -29,9 +30,13 @@ class TensorMemory:
 
     # ATTRIBUTES #
 
-    # Queue used to store the (tensor, score) pairs
+    # Queue used to store the Tensor values
     # This queue can have a maximum size specified during construction
-    _memory: deque
+    _tensor_memory: deque
+
+    # Queue used to store the float values
+    # This queue can have a maximum size specified during construction
+    _float_memory: deque
 
     # Maximum size of the deque
     max_size: int or None
@@ -66,7 +71,18 @@ class TensorMemory:
     # TODO
 
     def sample_chunk(self, chunk_size):
-        pass
+        """
+        Samples a random chunk of size chunk_size from the Tensor memory
+
+        Parameters
+        ----------
+        chunk_size: int
+            Size of the chunk to sample
+
+        Returns
+        -------
+        tuple[list[torch.Tensor], list[float]]
+        """
 
     def sample_multiple_chunks(self, chunk_amount, chunk_size):
         pass

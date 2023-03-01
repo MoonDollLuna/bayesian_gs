@@ -2,7 +2,7 @@
 # Developed by Luna Jimenez Fernandez
 # Based on the work of Wenfeng Zhang et al.
 
-def _nodes_to_key(node, parents):
+def nodes_to_key(node, parents):
     """
     Converts the node and its parents to a tuple representation used as a key for the inner dictionary
 
@@ -59,7 +59,7 @@ class BDeUCache:
         bool
         """
 
-        key = _nodes_to_key(node, parents)
+        key = nodes_to_key(node, parents)
         return key in self._bdeu_scores
 
     def get_bdeu_score(self, node, parents):
@@ -78,7 +78,7 @@ class BDeUCache:
         float
         """
 
-        key = _nodes_to_key(node, parents)
+        key = nodes_to_key(node, parents)
         return self._bdeu_scores[key]
 
     def insert_bdeu_score(self, node, parents, score):
@@ -95,5 +95,5 @@ class BDeUCache:
             Local BDeU score of the family
         """
 
-        key = _nodes_to_key(node, parents)
+        key = nodes_to_key(node, parents)
         self._bdeu_scores[key] = score
