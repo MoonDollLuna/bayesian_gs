@@ -12,8 +12,43 @@ class ExtendedDAG(DAG):
     Extension of the DAG (Directed Acyclical Graph) class provided by pgmpy, adding additional functionality
     and hooks to be used by the proposed solutions within this project.
 
+    This extension includes:
+        - The ability to directly add a series of variables to the DAG from construction.
+        - The ability to use variable indexes instead of variable names for edge operations.
+        - Removal and Inversion operations for edges.
+        - Methods to return a list of existing edges (as indexes or variable names).
+
     Proposed DAG implementations must extend this class and implement all methods.
+
+    Parameters
+    ----------
+    variables: list of str, optional
+        List of nodes to initialize the DAG with
     """
+
+    # ATTRIBUTES #
+
+    # TODO
+    # Dictionary containing the
+
+    # CONSTRUCTOR #
+
+    def __init__(self, variables=None):
+        # Construct the standard DAG
+        super().__init__()
+
+        # If specified, add the variables to the DAG
+
+
+
+    # NODE MANIPULATION #
+
+    def add_node(self, node, weight=None, latent=False):
+        pass
+
+    def add_nodes_from(self, nodes, weights=None, latent=False):
+        pass
+
 
     # EDGE MANIPULATION #
 
