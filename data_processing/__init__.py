@@ -3,8 +3,10 @@
 # Based on the work of Wenfeng Zhang et al.
 
 """
-This module contains problem-agnostic definitions of **Bayesian Network architectures** (DAGs), containing
-all the edges (and their directions) between the variables.
-
-These definitions are to be used by the rest of the project
+This module contains all data-processing related classes, including:
+    - Handling of the local BDeU scores
+    - Handling of the training memory for the Neural Networks
 """
+
+from .bdeu_cache import BDeUCache
+from .training_memory import TrainingMemory
