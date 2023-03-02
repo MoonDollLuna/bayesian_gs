@@ -28,8 +28,15 @@ class ExtendedDAG(DAG):
 
     # ATTRIBUTES #
 
-    # TODO
-    # Dictionary containing the
+    # TODO Add edges to this list and update AdjacencyDAG / NodeAdjacencyDAG to not include duplicated methods
+    # List of existing edges within the DAG, as (start, end) tuples
+    _existing_edges: list
+
+    # Dictionary containing the variable name -> variable index lookup
+    _node_to_index: dict
+
+    # Dictionary containing the variable index -> variable name lookup
+    _index_to_node: dict
 
     # CONSTRUCTOR #
 
@@ -37,20 +44,86 @@ class ExtendedDAG(DAG):
         # Construct the standard DAG
         super().__init__()
 
+        # Initialize both dictionaries
+        # These dictionaries are used for faster lookups
+        self._node_to_index = {}
+        self._index_to_node = {}
+
         # If specified, add the variables to the DAG
-
-
+        self.add_nodes_from(variables)
 
     # NODE MANIPULATION #
 
     def add_node(self, node, weight=None, latent=False):
-        pass
+        """
+        Adds a single node to the Graph.
+
+        Parameters
+        ----------
+        node: str, int, or any hashable python object.
+            The node to add to the graph.
+
+        weight: int, float
+            The weight of the node.
+
+        latent: boolean (default: False)
+            Specifies whether the variable is latent or not.
+        """
+
+        # Adds the node using the appropriate method
+        super().add_node(node, weight, latent)
+
+        # Adds the node to the dictionary
+        self._add_node_to_dictionaries(node)
 
     def add_nodes_from(self, nodes, weights=None, latent=False):
-        pass
+        """
+        Add multiple nodes to the Graph.
 
+        Parameters
+        ----------
+        nodes: iterable container
+            A container of nodes (list, dict, set, or any hashable python
+            object).
+
+        weights: list, tuple (default=None)
+            A container of weights (int, float). The weight value at index i
+            is associated with the variable at index i.
+
+        latent: list, tuple (default=False)
+            A container of boolean. The value at index i tells whether the
+            node at index i is latent or not.
+        """
+
+        # Adds the node using the appropriate method
+        super().add_nodes_from(nodes, weights, latent)
+
+        # Add all nodes to the dictionary
+        for node in nodes:
+            self._add_node_to_dictionaries(node)
+
+    def _add_node_to_dictionaries(self, node):
+        """
+        Adds the node to both dictionaries for faster lookup
+
+        Parameters
+        ----------
+        node: str, int, or any hashable python object.
+            The node to add to the graph.
+        """
+
+        # Find the appropriate index for this node
+        index = len(self._index_to_node) + 1
+
+        # Add the node to both dictionaries
+        self._node_to_index[node] = index
+        self._index_to_node[index] = node
 
     # EDGE MANIPULATION #
+
+    # TODO
+    def add_edge(self, u, v, weight=None):
+        pass
 
     def remove_edge(self, u, v):
         """
