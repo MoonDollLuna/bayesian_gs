@@ -16,7 +16,6 @@ class ExtendedDAG(DAG):
         - The ability to directly add a series of variables to the DAG from construction.
         - The ability to use variable indexes instead of variable names for edge operations.
         - Removal and Inversion operations for edges.
-        - Methods to return a list of existing edges (as indexes or variable names).
 
     Proposed DAG implementations must extend this class and implement all methods.
 
@@ -27,10 +26,6 @@ class ExtendedDAG(DAG):
     """
 
     # ATTRIBUTES #
-
-    # TODO Add edges to this list and update AdjacencyDAG / NodeAdjacencyDAG to not include duplicated methods
-    # List of existing edges within the DAG, as (start, end) tuples
-    _existing_edges: list
 
     # Dictionary containing the variable name -> variable index lookup
     _node_to_index: dict
@@ -51,6 +46,25 @@ class ExtendedDAG(DAG):
 
         # If specified, add the variables to the DAG
         self.add_nodes_from(variables)
+
+    # HELPER METHODS
+
+    def _add_node_to_dictionaries(self, node):
+        """
+        Adds the node to both dictionaries for faster lookup
+
+        Parameters
+        ----------
+        node: str, int, or any hashable python object.
+            The node to add to the graph.
+        """
+
+        # Find the appropriate index for this node
+        index = len(self._index_to_node)
+
+        # Add the node to both dictionaries
+        self._node_to_index[node] = index
+        self._index_to_node[index] = node
 
     # NODE MANIPULATION #
 
@@ -102,28 +116,34 @@ class ExtendedDAG(DAG):
         for node in nodes:
             self._add_node_to_dictionaries(node)
 
-    def _add_node_to_dictionaries(self, node):
+    # EDGE MANIPULATION #
+
+    def add_edge(self, u, v, weight=None):
         """
-        Adds the node to both dictionaries for faster lookup
+        Add an edge between u and v.
+
+        The nodes u and v will be automatically added if they are
+        not already in the graph (if specified as strings).
+
+        Note that nodes may be
 
         Parameters
         ----------
-        node: str, int, or any hashable python object.
-            The node to add to the graph.
+        u, v : int, str
+            Index or name of the nodes contained within the edge
+
+        weight: int, float (default=None)
+            The weight of the edge
         """
 
-        # Find the appropriate index for this node
-        index = len(self._index_to_node) + 1
+        # If the edges are given as indices, transform them to their appropriate names
+        if isinstance(u, int):
+            u = self._index_to_node[u]
+        if isinstance(v, int):
+            v = self._index_to_node[v]
 
-        # Add the node to both dictionaries
-        self._node_to_index[node] = index
-        self._index_to_node[index] = node
-
-    # EDGE MANIPULATION #
-
-    # TODO
-    def add_edge(self, u, v, weight=None):
-        pass
+        # Add the edges to the graph
+        super().add_edge(u, v, weight)
 
     def remove_edge(self, u, v):
         """
@@ -133,10 +153,17 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        u, v: nodes
-            Nodes can be any hashable Python object.
+        u, v : int, str
+            Index or name of the nodes contained within the edge
         """
 
+        # If the edges are given as indices, transform them to their appropriate names
+        if isinstance(u, int):
+            u = self._index_to_node[u]
+        if isinstance(v, int):
+            v = self._index_to_node[v]
+
+        # Remove the edges from the graph
         super(nx.DiGraph, self).remove_edge(u, v)
 
     def invert_edge(self, u, v, weight=None):
@@ -145,12 +172,18 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        u, v: nodes
-            Nodes can be any hashable Python object.
+        u, v : int, str
+            Index or name of the nodes contained within the edge
 
         weight: int, float (default=None)
             The weight of the edge
         """
+
+        # If the edges are given as indices, transform them to their appropriate names
+        if isinstance(u, int):
+            u = self._index_to_node[u]
+        if isinstance(v, int):
+            v = self._index_to_node[v]
 
         # Removes the edge
         super(nx.DiGraph, self).remove_edge(u, v)
