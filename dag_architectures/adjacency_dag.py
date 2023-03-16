@@ -13,6 +13,12 @@ class AdjacencyDAG(ExtendedDAG):
     `AdjacencyDAG` extends the pgmpy implementation of a Directed Acyclic Graph (DAG) to include an
     adjacency matrix implementation, to be used as Tensors in Neural Networks.
 
+    The adjacency matrix is built every time a node (or a list of nodes) is added to the DAG.
+    The existing edges are kept in the newly built DAG.
+
+    If a node is removed from the DAG, the adjacency matrix is completely rebuilt from scratch
+    (to avoid possible incoherencies)
+
     Parameters
     ----------
     variables: list of str, optional
@@ -22,16 +28,8 @@ class AdjacencyDAG(ExtendedDAG):
     # ATTRIBUTES #
     
     # Adjacency matrix representing the DAG
-    # If no variables are declared during DAG construction, a specific method must be called
-    # to initialize the adjacency matrix
-    adjacency_matrix: np.ndarray
-
-    # Dictionary representing the index for each variable in the adjacency matrix
-    # Created to speed-up the lookup process
-    variable_index_dict: dict
-
-    # Flag to indicate if the adjacency matrix has been already initialized
-    adjacency_matrix_initialized: bool
+    # This matrix is built every time a node (or list of nodes) is added or removed from the DAG
+    _adjacency_matrix: np.ndarray
 
     # CONSTRUCTOR #
 
@@ -42,41 +40,70 @@ class AdjacencyDAG(ExtendedDAG):
         If no variables are specified, an empty DAG is constructed instead
         """
 
-        # Initialize the super constructor
-        super().__init__()
+        # Initialize the super constructor (with the specified variables)
+        super().__init__(variables)
 
-        # If there are variables, add them to the DAG and create the adjacency matrix
-        # Otherwise, the adjacency matrix remains uninitialized
+        # If the DAG was built with variables, build the adjacency matrix
         if variables:
-            self.add_nodes_from(nodes=variables)
-            self.initialize_adjacency_matrix()
+            self._update_adjacency_matrix()
 
     # HELPER METHODS #
 
-    def initialize_adjacency_matrix(self):
+    def _update_adjacency_matrix(self, force_reset=False):
         """
-        Updates the internal DAG adjacency matrix representation to include all added variables, and
-        initializes a dictionary containing the index of each variable within the adjacency matrix
+        Updates (or, if necessary, builds from scratch) the adjacency matrix representing the
+        edges existing between the nodes in the DAG
 
-        This method MUST be called before edge modification, and can only be called once
+        Parameters
+        ----------
+        force_reset : bool, default = False
+            If specified, the adjacency matrix is always built from scratch
         """
 
-        # This method can only be called once
-        if not self.adjacency_matrix_initialized:
+        # Check if the matrix needs to be re-built
+        # (either first time building or deleting nodes)
+        if self._adjacency_matrix is None or force_reset:
 
-            # Create the adjacency matrix
-            self.adjacency_matrix = np.zeros((len(self), len(self)))
+            # Create a new adjacency matrix from scratch
+            self._adjacency_matrix = np.zeros((len(self), len(self)))
 
-            # Create the lookup dictionary
-            self.variable_index_dict = {}
-            for index in range(len(self)):
-                self.variable_index_dict[list(self)[index]] = index
+            # Add the already existing edges into the adjacency matrix
+            self._update_adjacency_matrix_edges()
 
-            # Mark the adjacency matrix flag
-            self.adjacency_matrix_initialized = True
-
+        # Otherwise, adds additional rows and columns to the
+        # adjacency matrix
         else:
-            print("The adjacency matrix has already been initialized")
+
+            # Find the difference between the current size and the expected size
+            current_size = len(self._adjacency_matrix)
+            expected_size = len(self)
+            size_to_increase = expected_size - current_size
+
+            # Add columns up to the expected size
+            for _ in range(size_to_increase):
+                self._adjacency_matrix = np.c_[self._adjacency_matrix, np.zeros(current_size)]
+
+            # Add rows up to the expected size
+            for _ in range(size_to_increase):
+                self._adjacency_matrix = np.r_[self._adjacency_matrix, np.zeros(expected_size)]
+
+    def _update_adjacency_matrix_edges(self):
+        """
+        Given an already existing and empty adjacency matrix, add all already existing edges
+        back into the adjacency matrix
+
+        This method is mostly useful when deleting nodes
+        """
+
+        # For each edge in the edges list, add it back to the adjacency matrix
+        for u, v in list(self.edges()):
+
+            # Convert the edge names to indices
+            u = self.node_to_index[u]
+            v = self.node_to_index[v]
+
+            # Add the edge into the adjacency matrix
+            self._adjacency_matrix[u, v] = 1
 
     # EDGE MANIPULATION #
 
@@ -85,8 +112,6 @@ class AdjacencyDAG(ExtendedDAG):
         Add an edge between u and v, and represent said edge within the adjacency matrix.
 
         The nodes u and v will be automatically added if they are not already in the graph.
-
-        This method can only be called if initialize_adjacency_matrix was called previously.
 
         Parameters
         ----------
@@ -97,17 +122,14 @@ class AdjacencyDAG(ExtendedDAG):
             The weight of the edge
         """
 
-        # Ensure that the adjacency matrix is already initialized
-        if self.adjacency_matrix_initialized:
+        # Add the edge using the original method
+        super().add_edge(u, v, weight)
 
-            # Add the edge using the original method
-            super().add_edge(u, v, weight)
+        # If the nodes are given as names, transform them to ints
+        u, v = self.convert_nodes_to_indices(u, v)
 
-            # Add the edge to the adjacency matrix
-            self.adjacency_matrix[self.variable_index_dict[u], self.variable_index_dict[v]] = 1
-
-        else:
-            raise ValueError
+        # Add the edge to the adjacency matrix
+        self._adjacency_matrix[u, v] = 1
 
     def remove_edge(self, u, v):
         """
@@ -123,17 +145,14 @@ class AdjacencyDAG(ExtendedDAG):
             Nodes can be any hashable Python object.
         """
 
-        # Ensure that the adjacency matrix is already initialized
-        if self.adjacency_matrix_initialized:
+        # Remove the edge using the original method
+        super().add_edge(u, v)
 
-            # Remove the edge using the original method
-            super().add_edge(u, v)
+        # If the nodes are given as names, transform them to ints
+        u, v = self.convert_nodes_to_indices(u, v)
 
-            # Remove the edge from the adjacency matrix
-            self.adjacency_matrix[self.variable_index_dict[u], self.variable_index_dict[v]] = 0
-
-        else:
-            raise ValueError
+        # Add the edge to the adjacency matrix
+        self._adjacency_matrix[u, v] = 0
 
     def invert_edge(self, u, v, weight=None):
         """
@@ -151,18 +170,15 @@ class AdjacencyDAG(ExtendedDAG):
             The weight of the edge
         """
 
-        # Ensure that the adjacency matrix is already initialized
-        if self.adjacency_matrix_initialized:
+        # Invert the edge using the original method
+        super().invert_edge(u, v, weight)
 
-            # Invert the edge using the original method
-            super().invert_edge(u, v, weight)
+        # If the nodes are given as names, transform them to ints
+        u, v = self.convert_nodes_to_indices(u, v)
 
-            # Invert the edge in the adjacency matrix
-            self.adjacency_matrix[self.variable_index_dict[u], self.variable_index_dict[v]] = 0
-            self.adjacency_matrix[self.variable_index_dict[v], self.variable_index_dict[u]] = 1
-
-        else:
-            raise ValueError
+        # Invert the edge in the adjacency matrix
+        self._adjacency_matrix[u, v] = 0
+        self._adjacency_matrix[v, u] = 1
 
     # NEURAL NETWORK UTILITIES
 

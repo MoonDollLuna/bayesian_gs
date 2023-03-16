@@ -28,10 +28,10 @@ class ExtendedDAG(DAG):
     # ATTRIBUTES #
 
     # Dictionary containing the variable name -> variable index lookup
-    _node_to_index: dict
+    node_to_index: dict
 
     # Dictionary containing the variable index -> variable name lookup
-    _index_to_node: dict
+    index_to_node: dict
 
     # CONSTRUCTOR #
 
@@ -41,8 +41,8 @@ class ExtendedDAG(DAG):
 
         # Initialize both dictionaries
         # These dictionaries are used for faster lookups
-        self._node_to_index = {}
-        self._index_to_node = {}
+        self.node_to_index = {}
+        self.index_to_node = {}
 
         # If specified, add the variables to the DAG
         self.add_nodes_from(variables)
@@ -60,13 +60,67 @@ class ExtendedDAG(DAG):
         """
 
         # Find the appropriate index for this node
-        index = len(self._index_to_node)
+        index = len(self.index_to_node)
 
         # Add the node to both dictionaries
-        self._node_to_index[node] = index
-        self._index_to_node[index] = node
+        self.node_to_index[node] = index
+        self.index_to_node[index] = node
+
+    def _rebuild_dictionary(self):
+        """
+        TODO - WHEN DELETING, THE LOOKUP DICTIONARY NEEDS TO BE REBUILT
+        Returns
+        -------
+
+        """
+
+        raise NotImplementedError
+
+    def convert_nodes_to_indices(self, u, v):
+        """
+        Automatically transforms both u and v node strings into node indices
+
+        Parameters
+        ----------
+        u, v : int, str
+            Index or name of the nodes contained within the edge
+
+        Returns
+        -------
+        tuple(int, int)
+        """
+
+        if isinstance(u, str):
+            u = self.node_to_index[u]
+        if isinstance(v, str):
+            v = self.node_to_index[v]
+
+        return u, v
+
+    def convert_indices_to_nodes(self, u, v):
+        """
+        Automatically transforms both u and v node indices into node strings
+
+        Parameters
+        ----------
+        u, v : int, str
+            Index or name of the nodes contained within the edge
+
+        Returns
+        -------
+        tuple(str, str)
+        """
+
+        if isinstance(u, int):
+            u = self.index_to_node[u]
+        if isinstance(v, int):
+            v = self.index_to_node[v]
+
+        return u, v
 
     # NODE MANIPULATION #
+
+    # TODO REMOVE NODE AND REMOVE NODES FROM
 
     def add_node(self, node, weight=None, latent=False):
         """
@@ -136,11 +190,10 @@ class ExtendedDAG(DAG):
             The weight of the edge
         """
 
+        # TODO ENSURE THAT IF A NEW NODE IS GIVEN AS AN EDGE, IT IS ALSO ADDED TO THE DICTIONARIES
+
         # If the edges are given as indices, transform them to their appropriate names
-        if isinstance(u, int):
-            u = self._index_to_node[u]
-        if isinstance(v, int):
-            v = self._index_to_node[v]
+        u, v = self.convert_indices_to_nodes(u, v)
 
         # Add the edges to the graph
         super().add_edge(u, v, weight)
@@ -158,10 +211,7 @@ class ExtendedDAG(DAG):
         """
 
         # If the edges are given as indices, transform them to their appropriate names
-        if isinstance(u, int):
-            u = self._index_to_node[u]
-        if isinstance(v, int):
-            v = self._index_to_node[v]
+        u, v = self.convert_indices_to_nodes(u, v)
 
         # Remove the edges from the graph
         super(nx.DiGraph, self).remove_edge(u, v)
@@ -180,10 +230,7 @@ class ExtendedDAG(DAG):
         """
 
         # If the edges are given as indices, transform them to their appropriate names
-        if isinstance(u, int):
-            u = self._index_to_node[u]
-        if isinstance(v, int):
-            v = self._index_to_node[v]
+        u, v = self.convert_indices_to_nodes(u, v)
 
         # Removes the edge
         super(nx.DiGraph, self).remove_edge(u, v)
