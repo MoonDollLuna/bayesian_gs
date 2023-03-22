@@ -6,7 +6,7 @@
 import networkx as nx
 from pgmpy.base import DAG
 
-
+# TODO MANAGEMENT WHEN DICTIONARY NAMES FAIL
 class ExtendedDAG(DAG):
     """
     Extension of the DAG (Directed Acyclical Graph) class provided by pgmpy, adding additional functionality
@@ -16,6 +16,9 @@ class ExtendedDAG(DAG):
         - The ability to directly add a series of variables to the DAG from construction.
         - The ability to use variable indexes instead of variable names for edge operations.
         - Removal and Inversion operations for edges.
+
+    However, this extension expects node names to be strings, in order to allow
+    for node name - node index conversion without ambiguity.
 
     Proposed DAG implementations must extend this class and implement all methods.
 
@@ -47,7 +50,7 @@ class ExtendedDAG(DAG):
         # If specified, add the variables to the DAG
         self.add_nodes_from(variables)
 
-    # HELPER METHODS
+    # DICTIONARY MANAGEMENT
 
     def _add_node_to_dictionaries(self, node):
         """
@@ -55,7 +58,7 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        node: str, int, or any hashable python object.
+        node: str
             The node to add to the graph.
         """
 
@@ -66,15 +69,21 @@ class ExtendedDAG(DAG):
         self.node_to_index[node] = index
         self.index_to_node[index] = node
 
-    def _rebuild_dictionary(self):
+    def _rebuild_dictionaries(self):
         """
-        TODO - WHEN DELETING, THE LOOKUP DICTIONARY NEEDS TO BE REBUILT
-        Returns
-        -------
+        Rebuilds both node_to_index and index_to_node dictionaries from scratch
 
+        This method is intended to be used after removing a node from the DAG
         """
 
-        raise NotImplementedError
+        # Reset both dictionaries
+        self.node_to_index = {}
+        self.index_to_node = {}
+
+        # Assign indices and nodes to every node
+        for index, node in enumerate(list(self)):
+            self.node_to_index[node] = index
+            self.index_to_node[index] = node
 
     def convert_nodes_to_indices(self, u, v):
         """
@@ -82,7 +91,7 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        u, v : int, str
+        u, v : int or str
             Index or name of the nodes contained within the edge
 
         Returns
@@ -103,7 +112,7 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        u, v : int, str
+        u, v : int or str
             Index or name of the nodes contained within the edge
 
         Returns
@@ -119,8 +128,6 @@ class ExtendedDAG(DAG):
         return u, v
 
     # NODE MANIPULATION #
-
-    # TODO REMOVE NODE AND REMOVE NODES FROM
 
     def add_node(self, node, weight=None, latent=False):
         """
@@ -169,6 +176,47 @@ class ExtendedDAG(DAG):
         # Add all nodes to the dictionary
         for node in nodes:
             self._add_node_to_dictionaries(node)
+
+    def remove_node(self, n):
+        """
+        Removes the node n and all adjacent edges. In addition, update all internal dictionaries
+        to avoid inconsistencies.
+
+        Attempting to remove a non-existent node will raise an exception.
+
+        Parameters
+        ----------
+        n : node
+           A node in the graph
+
+        Raises
+        ------
+        NetworkXError
+           If n is not in the graph.
+        """
+
+        # Remove the node from the original directed graph
+        super(nx.DiGraph, self).remove_node(n)
+
+        # Rebuild the dictionaries to avoid inconsistencies
+        self._rebuild_dictionaries()
+
+    def remove_nodes_from(self, nodes):
+        """
+        Remove multiple nodes.
+
+        Parameters
+        ----------
+        nodes : iterable container
+            A container of nodes (list, dict, set, etc.).  If a node
+            in the container is not in the graph it is silently ignored.
+        """
+
+        # Remove the nodes from the original directed graph
+        super(nx.DiGraph, self).remove_nodes_from(nodes)
+
+        # Rebuild the dictionaries to avoid inconsistencies
+        self._rebuild_dictionaries()
 
     # EDGE MANIPULATION #
 
