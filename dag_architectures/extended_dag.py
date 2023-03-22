@@ -135,7 +135,7 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        node: str, int, or any hashable python object.
+        node: str
             The node to add to the graph.
 
         weight: int, float
@@ -144,6 +144,10 @@ class ExtendedDAG(DAG):
         latent: boolean (default: False)
             Specifies whether the variable is latent or not.
         """
+
+        # If the node is not a string (for example, a numerical name),
+        # convert it to a string name
+        node = str(node)
 
         # Adds the node using the appropriate method
         super().add_node(node, weight, latent)
@@ -170,6 +174,10 @@ class ExtendedDAG(DAG):
             node at index i is latent or not.
         """
 
+        # If any of the added nodes are not a string (for example, numerical names)
+        # convert them to string names
+        nodes = [str(node) for node in nodes]
+
         # Adds the node using the appropriate method
         super().add_nodes_from(nodes, weights, latent)
 
@@ -186,7 +194,7 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        n : node
+        n : str or int
            A node in the graph
 
         Raises
@@ -194,6 +202,14 @@ class ExtendedDAG(DAG):
         NetworkXError
            If n is not in the graph.
         """
+
+        # If n is an index, check if it exists and get the appropriate node name
+        # Otherwise, raise a NetworkXError
+        try:
+            if isinstance(n, int):
+                n = self.index_to_node[n]
+        except KeyError:
+            raise nx.NetworkXError
 
         # Remove the node from the original directed graph
         super(nx.DiGraph, self).remove_node(n)
@@ -204,6 +220,8 @@ class ExtendedDAG(DAG):
     def remove_nodes_from(self, nodes):
         """
         Remove multiple nodes.
+
+        If any node in nodes does not belong to the DAG, the removal will silently fail without error
 
         Parameters
         ----------
@@ -256,6 +274,11 @@ class ExtendedDAG(DAG):
         ----------
         u, v : int, str
             Index or name of the nodes contained within the edge
+
+        Raises
+        ------
+        NetworkXError
+           If u or v are not in the graph.
         """
 
         # If the edges are given as indices, transform them to their appropriate names
@@ -275,6 +298,11 @@ class ExtendedDAG(DAG):
 
         weight: int, float (default=None)
             The weight of the edge
+
+        Raises
+        ------
+        NetworkXError
+           If u or v are not in the graph.
         """
 
         # If the edges are given as indices, transform them to their appropriate names
