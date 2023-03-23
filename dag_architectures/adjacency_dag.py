@@ -16,19 +16,19 @@ class AdjacencyDAG(ExtendedDAG):
     The adjacency matrix is built every time a node (or a list of nodes) is added to the DAG.
     The existing edges are kept in the newly built DAG.
 
-    If a node is removed from the DAG, the adjacency matrix is completely rebuilt from scratch
-    (to avoid possible incoherencies)
+    If a node (or series of nodes) is removed from the DAG, the adjacency matrix is completely rebuilt
+    from scratch (to avoid possible incoherencies)
 
     Parameters
     ----------
-    variables: list of str, optional
+    variables: list of str or int, optional
         List of nodes to initialize the DAG with
     """
 
     # ATTRIBUTES #
     
     # Adjacency matrix representing the DAG
-    # This matrix is built every time a node (or list of nodes) is added or removed from the DAG
+    # This matrix is updated every time a node (or list of nodes) is added or removed from the DAG
     _adjacency_matrix: np.ndarray
 
     # CONSTRUCTOR #
@@ -47,7 +47,7 @@ class AdjacencyDAG(ExtendedDAG):
         if variables:
             self._update_adjacency_matrix()
 
-    # HELPER METHODS #
+    # ADJACENCY MATRIX METHODS #
 
     def _update_adjacency_matrix(self, force_reset=False):
         """
@@ -105,6 +105,28 @@ class AdjacencyDAG(ExtendedDAG):
             # Add the edge into the adjacency matrix
             self._adjacency_matrix[u, v] = 1
 
+    def get_adjacency_matrix(self):
+        """
+        Returns the adjacency matrix.
+
+        Returns
+        -------
+        np.ndarray
+        """
+
+        return self._adjacency_matrix
+
+    def get_adjacency_matrix_tensor(self):
+        """
+        Returns the adjacency matrix as a tensor prepared for use as a neural network input
+
+        Returns
+        -------
+        torch.Tensor
+        """
+
+        return torch.from_numpy(self._adjacency_matrix)
+
     # EDGE MANIPULATION #
 
     def add_edge(self, u, v, weight=None):
@@ -120,12 +142,17 @@ class AdjacencyDAG(ExtendedDAG):
 
         weight: int, float (default=None)
             The weight of the edge
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
         # Add the edge using the original method
         super().add_edge(u, v, weight)
 
-        # If the nodes are given as names, transform them to ints
+        # Ensure that the node names are converted to ints
         u, v = self.convert_nodes_to_indices(u, v)
 
         # Add the edge to the adjacency matrix
@@ -137,12 +164,15 @@ class AdjacencyDAG(ExtendedDAG):
 
         The nodes u and v will remain in the graph, even if they no longer have any edges.
 
-        This method can only be called if initialize_adjacency_matrix was called previously.
-
         Parameters
         ----------
         u, v: nodes
             Nodes can be any hashable Python object.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
         # Remove the edge using the original method
@@ -159,8 +189,6 @@ class AdjacencyDAG(ExtendedDAG):
         Inverts the edge between u and v, replacing it with an edge between v and u.
         Also reflects the change within the adjacency matrix.
 
-        This method can only be called if initialize_adjacency_matrix was called previously.
-
         Parameters
         ----------
         u, v: nodes
@@ -168,6 +196,11 @@ class AdjacencyDAG(ExtendedDAG):
 
         weight: int, float (default=None)
             The weight of the edge
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
         # Invert the edge using the original method
@@ -179,17 +212,3 @@ class AdjacencyDAG(ExtendedDAG):
         # Invert the edge in the adjacency matrix
         self._adjacency_matrix[u, v] = 0
         self._adjacency_matrix[v, u] = 1
-
-    # NEURAL NETWORK UTILITIES
-
-    def get_tensor(self):
-        """
-        Returns the adjacency matrix as a tensor prepared for use as a neural network input
-
-        Returns
-        -------
-        torch.Tensor
-        """
-
-        return torch.from_numpy(self.adjacency_matrix)
-

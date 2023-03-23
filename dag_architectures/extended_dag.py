@@ -27,7 +27,7 @@ class ExtendedDAG(DAG):
 
     Parameters
     ----------
-    variables: list of str, optional
+    variables: list of str or int, optional
         List of nodes to initialize the DAG with
     """
 
