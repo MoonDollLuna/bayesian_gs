@@ -6,7 +6,7 @@
 import networkx as nx
 from pgmpy.base import DAG
 
-# TODO MANAGEMENT WHEN DICTIONARY NAMES FAIL
+
 class ExtendedDAG(DAG):
     """
     Extension of the DAG (Directed Acyclical Graph) class provided by pgmpy, adding additional functionality
@@ -19,6 +19,9 @@ class ExtendedDAG(DAG):
 
     However, this extension expects node names to be strings, in order to allow
     for node name - node index conversion without ambiguity.
+
+    Strict node naming and usage is enforced by only allowing strings and integers and inputs -
+    other inputs when not appropriate will lead to TypeError exceptions.
 
     Proposed DAG implementations must extend this class and implement all methods.
 
@@ -89,6 +92,8 @@ class ExtendedDAG(DAG):
         """
         Automatically transforms both u and v node strings into node indices
 
+        If a node does not exist, the method will return None instead of failing
+
         Parameters
         ----------
         u, v : int or str
@@ -96,13 +101,28 @@ class ExtendedDAG(DAG):
 
         Returns
         -------
-        tuple(int, int)
+        tuple(int or None, int or None)
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
+        # Ensure that the inputs are either ints or strings
+        if not isinstance(u, (int, str)) or not isinstance(v, (int, str)):
+            raise TypeError("Nodes must be either strings or integers")
+
         if isinstance(u, str):
-            u = self.node_to_index[u]
+            try:
+                u = self.node_to_index[u]
+            except KeyError:
+                u = None
         if isinstance(v, str):
-            v = self.node_to_index[v]
+            try:
+                v = self.node_to_index[v]
+            except KeyError:
+                v = None
 
         return u, v
 
@@ -110,6 +130,8 @@ class ExtendedDAG(DAG):
         """
         Automatically transforms both u and v node indices into node strings
 
+        If a node does not exist, the method will return None instead of failing
+
         Parameters
         ----------
         u, v : int or str
@@ -117,13 +139,28 @@ class ExtendedDAG(DAG):
 
         Returns
         -------
-        tuple(str, str)
+        tuple(str or None, str or None)
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
+        # Ensure that the inputs are either ints or strings
+        if not isinstance(u, (int, str)) or not isinstance(v, (int, str)):
+            raise TypeError("Nodes must be either strings or integers")
+
         if isinstance(u, int):
-            u = self.index_to_node[u]
+            try:
+                u = self.index_to_node[u]
+            except KeyError:
+                u = None
         if isinstance(v, int):
-            v = self.index_to_node[v]
+            try:
+                v = self.index_to_node[v]
+            except KeyError:
+                v = None
 
         return u, v
 
@@ -135,7 +172,7 @@ class ExtendedDAG(DAG):
 
         Parameters
         ----------
-        node: str
+        node: str or int
             The node to add to the graph.
 
         weight: int, float
@@ -143,10 +180,19 @@ class ExtendedDAG(DAG):
 
         latent: boolean (default: False)
             Specifies whether the variable is latent or not.
+
+        Raises
+        ------
+        TypeError
+            If the node is neither an int or a string
         """
 
+        # Ensure that the inputs are either ints or strings
+        if not isinstance(node, (int, str)):
+            raise TypeError("Nodes must be either strings or integers")
+
         # If the node is not a string (for example, a numerical name),
-        # convert it to a string name
+        # force it into a string name
         node = str(node)
 
         # Adds the node using the appropriate method
@@ -172,10 +218,19 @@ class ExtendedDAG(DAG):
         latent: list, tuple (default=False)
             A container of boolean. The value at index i tells whether the
             node at index i is latent or not.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
+        # Check that all elements in the list are either integers or strings
+        if not all(isinstance(node, (int, str)) for node in nodes):
+            raise TypeError("Nodes must be either strings or integers")
+
         # If any of the added nodes are not a string (for example, numerical names)
-        # convert them to string names
+        # force them into string names
         nodes = [str(node) for node in nodes]
 
         # Adds the node using the appropriate method
@@ -190,7 +245,8 @@ class ExtendedDAG(DAG):
         Removes the node n and all adjacent edges. In addition, update all internal dictionaries
         to avoid inconsistencies.
 
-        Attempting to remove a non-existent node will raise an exception.
+        Attempting to remove a non-existent node will raise an exception to comply with the
+        original methods.
 
         Parameters
         ----------
@@ -201,7 +257,13 @@ class ExtendedDAG(DAG):
         ------
         NetworkXError
            If n is not in the graph.
+        TypeError
+            If the node is neither an int or a string
         """
+
+        # Ensure that the inputs are either ints or strings
+        if not isinstance(n, (int, str)):
+            raise TypeError("Nodes must be either strings or integers")
 
         # If n is an index, check if it exists and get the appropriate node name
         # Otherwise, raise a NetworkXError
@@ -222,13 +284,39 @@ class ExtendedDAG(DAG):
         Remove multiple nodes.
 
         If any node in nodes does not belong to the DAG, the removal will silently fail without error
+        to comply with the original methods
 
         Parameters
         ----------
         nodes : iterable container
             A container of nodes (list, dict, set, etc.).  If a node
             in the container is not in the graph it is silently ignored.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
+
+        # Check that all elements in the list are either integers or strings
+        if not all(isinstance(node, (int, str)) for node in nodes):
+            raise TypeError("Nodes must be either strings or integers")
+
+        # Convert all nodes into string names
+        # Any conversion that fails will silently fail instead of raising an exception
+        new_nodes = []
+        for node in nodes:
+            # Strings are not converted
+            if isinstance(node, str):
+                new_nodes.append(node)
+            # ONLY INTS try to be converted, all other types will be ignored
+            elif isinstance(node, int):
+                try:
+                    node = self.index_to_node[node]
+                    new_nodes.append(node)
+                except KeyError:
+                    # Silently fail
+                    pass
 
         # Remove the nodes from the original directed graph
         super(nx.DiGraph, self).remove_nodes_from(nodes)
@@ -243,9 +331,7 @@ class ExtendedDAG(DAG):
         Add an edge between u and v.
 
         The nodes u and v will be automatically added if they are
-        not already in the graph (if specified as strings).
-
-        Note that nodes may be
+        not already in the graph
 
         Parameters
         ----------
@@ -254,12 +340,32 @@ class ExtendedDAG(DAG):
 
         weight: int, float (default=None)
             The weight of the edge
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
-        # TODO ENSURE THAT IF A NEW NODE IS GIVEN AS AN EDGE, IT IS ALSO ADDED TO THE DICTIONARIES
+        # Ensure that the inputs are either ints or strings
+        if not isinstance(u, (int, str)) or not isinstance(v, (int, str)):
+            raise TypeError("Nodes must be either strings or integers")
 
-        # If the edges are given as indices, transform them to their appropriate names
-        u, v = self.convert_indices_to_nodes(u, v)
+        # If u or v are indices, check if they already exist
+        # Otherwise, they will be considered unadded nodes -
+        # and added to the DAG as strings
+
+        if isinstance(u, int):
+            try:
+                u = self.index_to_node[u]
+            except KeyError:
+                u = str(u)
+
+        if isinstance(v, int):
+            try:
+                v = self.index_to_node[v]
+            except KeyError:
+                v = str(v)
 
         # Add the edges to the graph
         super().add_edge(u, v, weight)
@@ -279,12 +385,15 @@ class ExtendedDAG(DAG):
         ------
         NetworkXError
            If u or v are not in the graph.
+        TypeError
+            If a node is neither an int or a string.
         """
 
         # If the edges are given as indices, transform them to their appropriate names
         u, v = self.convert_indices_to_nodes(u, v)
 
         # Remove the edges from the graph
+        # Exceptions are checked by the superclass method
         super(nx.DiGraph, self).remove_edge(u, v)
 
     def invert_edge(self, u, v, weight=None):
@@ -303,12 +412,15 @@ class ExtendedDAG(DAG):
         ------
         NetworkXError
            If u or v are not in the graph.
+       TypeError
+        If a node is neither an int or a string.
         """
 
         # If the edges are given as indices, transform them to their appropriate names
         u, v = self.convert_indices_to_nodes(u, v)
 
         # Removes the edge
+        # Exceptions are checked by the superclass method
         super(nx.DiGraph, self).remove_edge(u, v)
         # Adds the opposite edge back
         super().add_edge(v, u, weight=weight)
