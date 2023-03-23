@@ -107,6 +107,8 @@ class ExtendedDAG(DAG):
         ------
         TypeError
             If a node is neither an int or a string
+        NetworkXError
+           If u or v are not in the graph.
         """
 
         # Ensure that the inputs are either ints or strings
@@ -117,12 +119,12 @@ class ExtendedDAG(DAG):
             try:
                 u = self.node_to_index[u]
             except KeyError:
-                u = None
+                raise nx.NetworkXError("Node {} is not in the graph".format(u))
         if isinstance(v, str):
             try:
                 v = self.node_to_index[v]
             except KeyError:
-                v = None
+                raise nx.NetworkXError("Node {} is not in the graph".format(v))
 
         return u, v
 
@@ -145,6 +147,8 @@ class ExtendedDAG(DAG):
         ------
         TypeError
             If a node is neither an int or a string
+        NetworkXError
+           If u or v are not in the graph.
         """
 
         # Ensure that the inputs are either ints or strings
@@ -155,12 +159,12 @@ class ExtendedDAG(DAG):
             try:
                 u = self.index_to_node[u]
             except KeyError:
-                u = None
+                raise nx.NetworkXError("Node {} is not in the graph".format(u))
         if isinstance(v, int):
             try:
                 v = self.index_to_node[v]
             except KeyError:
-                v = None
+                raise nx.NetworkXError("Node {} is not in the graph".format(v))
 
         return u, v
 
@@ -369,6 +373,57 @@ class ExtendedDAG(DAG):
 
         # Add the edges to the graph
         super().add_edge(u, v, weight)
+
+    def add_edges_from(self, ebunch, weights=None):
+        """
+        Add all the edges in ebunch.
+
+        If nodes referred in the ebunch are not already present, they
+        will be automatically added.
+
+        Parameters
+        ----------
+        ebunch : list of tuple(str or int, str or int)
+            Each edge given in the container will be added to the graph.
+            The edges must be given as 2-tuples (u, v).
+
+        weights: list, tuple (default=None)
+            A container of weights (int, float). The weight value at index i
+            is associated with the edge at index i.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
+        """
+
+        # Ensure that the inputs are either ints or strings
+        if not all(isinstance(node, (int, str)) for node in ebunch):
+            raise TypeError("Nodes must be either strings or integers")
+
+        # For all pair of edges, check if u and v exist
+        # If not, assume that whichever node does not exist is a new node to be added
+        # and transform it into a string
+
+        new_ebunch = []
+
+        for u, v in ebunch:
+            if isinstance(u, int):
+                try:
+                    u = self.index_to_node[u]
+                except KeyError:
+                    u = str(u)
+
+            if isinstance(v, int):
+                try:
+                    v = self.index_to_node[v]
+                except KeyError:
+                    v = str(v)
+
+            new_ebunch.append((u, v))
+
+        # Add the list of edges
+        super().add_edges_from(new_ebunch, weights)
 
     def remove_edge(self, u, v):
         """
