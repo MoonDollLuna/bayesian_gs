@@ -127,6 +127,116 @@ class AdjacencyDAG(ExtendedDAG):
 
         return torch.from_numpy(self._adjacency_matrix)
 
+    # NODE MANIPULATION
+    # TODO - ADD NODES AND REMOVE NODES
+    # TODO - UPDATE DOCS
+    # TODO - LO MISMO CON ADD EDGE QUE PUEDE SER NECESARIO ACTUALIZAR
+    # TODO - ADD EDGES FROM
+
+    def add_node(self, node, weight=None, latent=False):
+        """
+        Adds a single node to the Graph.
+
+        Parameters
+        ----------
+        node: str or int
+            The node to add to the graph.
+
+        weight: int, float
+            The weight of the node.
+
+        latent: boolean (default: False)
+            Specifies whether the variable is latent or not.
+
+        Raises
+        ------
+        TypeError
+            If the node is neither an int or a string
+        """
+
+        # Add the node to the Extended DAG
+        super().add_node(node, weight, latent)
+
+        # Update the adjacency matrix accordingly
+        self._update_adjacency_matrix()
+
+    def add_nodes_from(self, nodes, weights=None, latent=False):
+        """
+        Add multiple nodes to the Graph.
+
+        Parameters
+        ----------
+        nodes: iterable container
+            A container of nodes (list, dict, set, or any hashable python
+            object).
+
+        weights: list, tuple (default=None)
+            A container of weights (int, float). The weight value at index i
+            is associated with the variable at index i.
+
+        latent: list, tuple (default=False)
+            A container of boolean. The value at index i tells whether the
+            node at index i is latent or not.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
+        """
+
+        # Add the list of nodes to the Extended DAG
+        super().add_nodes_from(nodes, weights, latent)
+
+        # Update the adjacency matrix accordingly
+        self._update_adjacency_matrix()
+
+    def remove_node(self, n):
+        """
+        Removes the node n and all adjacent edges. In addition, update all internal dictionaries
+        to avoid inconsistencies.
+
+        Attempting to remove a non-existent node will raise an exception to comply with the
+        original methods.
+
+        Parameters
+        ----------
+        n : str or int
+           A node in the graph
+
+        Raises
+        ------
+        NetworkXError
+           If n is not in the graph.
+        TypeError
+            If the node is neither an int or a string
+        """
+
+        # Remove the node from the Extended DAG
+        super().remove_node(n)
+
+        # Update the adjacency matrix accordingly
+        # When removing nodes, the adjacency matrix must be reset to avoid inconsistencies
+        self._update_adjacency_matrix(force_reset=True)
+
+    def remove_nodes_from(self, nodes):
+        """
+        Remove multiple nodes.
+
+        If any node in nodes does not belong to the DAG, the removal will silently fail without error
+        to comply with the original methods
+
+        Parameters
+        ----------
+        nodes : iterable container
+            A container of nodes (list, dict, set, etc.).  If a node
+            in the container is not in the graph it is silently ignored.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
+        """
+
     # EDGE MANIPULATION #
 
     def add_edge(self, u, v, weight=None):
