@@ -17,7 +17,7 @@ class AdjacencyDAG(ExtendedDAG):
     The existing edges are kept in the newly built DAG.
 
     If a node (or series of nodes) is removed from the DAG, the adjacency matrix is completely rebuilt
-    from scratch (to avoid possible incoherencies)
+    from scratch (to avoid possible inconsistencies)
 
     Parameters
     ----------
@@ -92,7 +92,7 @@ class AdjacencyDAG(ExtendedDAG):
         Given an already existing and empty adjacency matrix, add all already existing edges
         back into the adjacency matrix
 
-        This method is mostly useful when deleting nodes
+        This method is mostly used during rebuilding when a node has been removed
         """
 
         # For each edge in the edges list, add it back to the adjacency matrix
@@ -128,10 +128,6 @@ class AdjacencyDAG(ExtendedDAG):
         return torch.from_numpy(self._adjacency_matrix)
 
     # NODE MANIPULATION
-    # TODO - ADD NODES AND REMOVE NODES
-    # TODO - UPDATE DOCS
-    # TODO - LO MISMO CON ADD EDGE QUE PUEDE SER NECESARIO ACTUALIZAR
-    # TODO - ADD EDGES FROM
 
     def add_node(self, node, weight=None, latent=False):
         """
@@ -237,6 +233,13 @@ class AdjacencyDAG(ExtendedDAG):
             If a node is neither an int or a string
         """
 
+        # Remove the nodes from the Extended DAG
+        super().remove_node(nodes)
+
+        # Update the adjacency matrix accordingly
+        # When removing nodes, the adjacency matrix must be reset to avoid inconsistencies
+        self._update_adjacency_matrix(force_reset=True)
+
     # EDGE MANIPULATION #
 
     def add_edge(self, u, v, weight=None):
@@ -262,11 +265,48 @@ class AdjacencyDAG(ExtendedDAG):
         # Add the edge using the original method
         super().add_edge(u, v, weight)
 
+        # Update the adjacency matrix (in case a new node has been added)
+        self._update_adjacency_matrix()
+
         # Ensure that the node names are converted to ints
         u, v = self.convert_nodes_to_indices(u, v)
 
         # Add the edge to the adjacency matrix
         self._adjacency_matrix[u, v] = 1
+
+    def add_edges_from(self, ebunch, weights=None):
+        """
+        Add all the edges in ebunch to the DAG and the adjacency matrix.
+
+        If nodes referred in the ebunch are not already present, they
+        will be automatically added.
+
+        Parameters
+        ----------
+        ebunch : list of tuple(str or int, str or int)
+            Each edge given in the container will be added to the graph.
+            The edges must be given as 2-tuples (u, v).
+
+        weights: list, tuple (default=None)
+            A container of weights (int, float). The weight value at index i
+            is associated with the edge at index i.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
+        """
+
+        # Add the edge using the original method
+        super().add_edges_from(ebunch, weights)
+
+        # Update the adjacency matrix (in case a new node has been added)
+        self._update_adjacency_matrix()
+
+        # Add each edge manually to the adjacency matrix
+        for u, v in ebunch:
+            u, v = self.convert_nodes_to_indices(u, v)
+            self._adjacency_matrix[u, v] = 1
 
     def remove_edge(self, u, v):
         """

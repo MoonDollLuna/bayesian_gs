@@ -275,7 +275,7 @@ class ExtendedDAG(DAG):
             if isinstance(n, int):
                 n = self.index_to_node[n]
         except KeyError:
-            raise nx.NetworkXError
+            raise nx.NetworkXError("There is no node with ID {} in the graph".format(n))
 
         # Remove the node from the original directed graph
         super(nx.DiGraph, self).remove_node(n)
@@ -468,7 +468,7 @@ class ExtendedDAG(DAG):
         NetworkXError
            If u or v are not in the graph.
        TypeError
-        If a node is neither an int or a string.
+            If a node is neither an int or a string.
         """
 
         # If the edges are given as indices, transform them to their appropriate names
