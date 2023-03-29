@@ -15,6 +15,7 @@ class ExtendedDAG(DAG):
     This extension includes:
         - The ability to directly add a series of variables to the DAG from construction.
         - The ability to use variable indexes instead of variable names for edge operations.
+        - Improved node removal to return node indices.
         - Removal and Inversion operations for edges.
 
     However, this extension expects node names to be strings, in order to allow
@@ -247,7 +248,7 @@ class ExtendedDAG(DAG):
     def remove_node(self, n):
         """
         Removes the node n and all adjacent edges. In addition, update all internal dictionaries
-        to avoid inconsistencies.
+        to avoid inconsistencies and return the original index of the removed node
 
         Attempting to remove a non-existent node will raise an exception to comply with the
         original methods.
@@ -256,6 +257,11 @@ class ExtendedDAG(DAG):
         ----------
         n : str or int
            A node in the graph
+
+        Returns
+        -------
+        int
+            Index of the removed node
 
         Raises
         ------
@@ -277,15 +283,21 @@ class ExtendedDAG(DAG):
         except KeyError:
             raise nx.NetworkXError("There is no node with ID {} in the graph".format(n))
 
+        # Get the index of the node
+        node_id = self.node_to_index[n]
+
         # Remove the node from the original directed graph
         super(nx.DiGraph, self).remove_node(n)
 
         # Rebuild the dictionaries to avoid inconsistencies
         self._rebuild_dictionaries()
 
+        # Return the original index of the node
+        return node_id
+
     def remove_nodes_from(self, nodes):
         """
-        Remove multiple nodes.
+        Remove multiple nodes, and return their original indices.
 
         If any node in nodes does not belong to the DAG, the removal will silently fail without error
         to comply with the original methods
@@ -322,11 +334,17 @@ class ExtendedDAG(DAG):
                     # Silently fail
                     pass
 
+        # Get the index of all nodes to be removed
+        nodes_id = [self.node_to_index[n] for n in new_nodes]
+
         # Remove the nodes from the original directed graph
         super(nx.DiGraph, self).remove_nodes_from(nodes)
 
         # Rebuild the dictionaries to avoid inconsistencies
         self._rebuild_dictionaries()
+
+        # Return the original indices of the removed nodes
+        return nodes_id
 
     # EDGE MANIPULATION #
 
