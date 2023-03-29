@@ -52,8 +52,7 @@ class AdjacencyDAG(ExtendedDAG):
 
     def _update_adjacency_matrix(self, removed=None):
         """
-        Updates (or, if necessary, builds from scratch) the adjacency matrix representing the
-        edges existing between the nodes in the DAG
+        Updates the adjacency matrix representing the edges existing between the nodes in the DAG
 
         Parameters
         ----------

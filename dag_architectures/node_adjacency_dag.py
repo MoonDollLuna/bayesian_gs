@@ -15,13 +15,14 @@ class NodeAdjacencyDAG(ExtendedDAG):
     `NodeAdjacencyDAG` extends the pgmpy implementation of a Directed Acyclic Graph (DAG) to include an
     node adjacency list representation, to be used as Tensors for neural networks.
 
-    In this case, we understand a "Node Adjacency List" as an array i representing the connections of
-    all other variables to the variable i, where the value in each position j means:
+    In this case, we understand a "Node Adjacency List" as a list of arrays, where each array i represents
+    the connections of all other variables to the variable i, where the value in each position j means:
         - -1: The variable itself
         - 0 : Said variable j is not a parent of i
         - 1 : Said variable j is a parent of i
 
-    This representation simplifies the process of computing the BDeU score
+    This representation simplifies the process of computing the estimated BDeU score using a neural network.
+    The representation is built during the node and edge manipulation process.
 
     Parameters
     ----------
@@ -39,16 +40,8 @@ class NodeAdjacencyDAG(ExtendedDAG):
     # ATTRIBUTES #
 
     # List of arrays representing the parents of each variable / node
-    # If no variables are declared during DAG construction, a specific method must be called
-    # to initialize the list
+    # These lists are updated in size every time a node (or a list of nodes) are added or removed from the DAG
     node_adjacency_list: List[np.ndarray]
-
-    # Dictionary representing the index for each variable in the adjacency matrix
-    # Created to speed-up the lookup process
-    variable_index_dict: dict
-
-    # Flag to indicate if the list of arrays has been already initialized
-    initialized: bool
 
     # CONSTRUCTOR #
 
@@ -59,48 +52,24 @@ class NodeAdjacencyDAG(ExtendedDAG):
         If no variables are specified, an empty DAG is constructed instead
         """
 
-        # Initialize the super constructor
-        super().__init__()
+        # Initialize the super constructor (with the specified variables)
+        super().__init__(variables)
 
-        # If there are variables, add them to the DAG and create the adjacency matrix
-        # Otherwise, the adjacency matrix remains uninitialized
+        # If the DAG was built with variables, built the node adjacency list
         if variables:
-            self.add_nodes_from(nodes=variables)
-            self.initialize_node_adjacency_list()
+            self._update_node_adjacency_list()
 
-    # HELPER METHODS #
+    # NODE ADJACENCY LIST METHODS #
 
-    def initialize_node_adjacency_list(self):
+    def _update_node_adjacency_list(self, removed=None):
         """
-        Updates the internal DAG node adjacency list representation to include all added variables, and
-        initializes a dictionary containing the index of each variable within the list
+        Updates the node adjacency list representing the edges existing between the nodes in the DAG
 
-        This method MUST be called before edge modification, and can only be called once
+        Parameters
+        ----------
+        removed: list of int, optional
+            If specified, the following nodes will be removed from the node adjacency list instead
         """
-
-        # This method can only be called once
-        if not self.initialized:
-
-            # Create the initial node adjacency list
-            self.node_adjacency_list = []
-
-            # Create the lookup dictionary and the adjacency list for each variable
-            self.variable_index_dict = {}
-            for index in range(len(self)):
-
-                # Dictionary index
-                self.variable_index_dict[list(self)[index]] = index
-
-                # Adjacency list
-                adjacency_list = np.zeros(len(self))
-                adjacency_list[index] = -1
-                self.node_adjacency_list.append(adjacency_list)
-
-            # Mark the adjacency matrix flag
-            self.initialized = True
-
-        else:
-            print("The adjacency matrix has already been initialized")
 
     # EDGE MANIPULATION #
 
