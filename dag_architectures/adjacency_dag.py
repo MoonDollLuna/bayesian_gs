@@ -4,6 +4,7 @@
 
 # IMPORTS #
 from extended_dag import ExtendedDAG
+
 import numpy as np
 import torch
 
@@ -49,29 +50,34 @@ class AdjacencyDAG(ExtendedDAG):
 
     # ADJACENCY MATRIX METHODS #
 
-    def _update_adjacency_matrix(self, force_reset=False):
+    def _update_adjacency_matrix(self, removed=None):
         """
         Updates (or, if necessary, builds from scratch) the adjacency matrix representing the
         edges existing between the nodes in the DAG
 
         Parameters
         ----------
-        force_reset : bool, default = False
-            If specified, the adjacency matrix is always built from scratch
+        removed: list of int, optional
+            If specified, the following nodes will be removed from the adjacency matrix instead
         """
 
-        # Check if the matrix needs to be re-built
-        # (either first time building or deleting nodes)
-        if self._adjacency_matrix is None or force_reset:
+        # Check if the matrix needs to be built for the first time
+        if self._adjacency_matrix is None:
 
             # Create a new adjacency matrix from scratch
             self._adjacency_matrix = np.zeros((len(self), len(self)))
 
-            # Add the already existing edges into the adjacency matrix
-            self._update_adjacency_matrix_edges()
+        # Check if nodes have been removed from the matrix
+        elif removed:
 
-        # Otherwise, adds additional rows and columns to the
-        # adjacency matrix
+            # Remove each node separately
+            for node_id in removed:
+
+                # Remove the node in both axis
+                self._adjacency_matrix = np.delete(self._adjacency_matrix, node_id, axis=0)
+                self._adjacency_matrix = np.delete(self._adjacency_matrix, node_id, axis=1)
+
+        # Otherwise, adds additional rows and columns to the adjacency matrix
         else:
 
             # Find the difference between the current size and the expected size
@@ -86,24 +92,6 @@ class AdjacencyDAG(ExtendedDAG):
             # Add rows up to the expected size
             for _ in range(size_to_increase):
                 self._adjacency_matrix = np.r_[self._adjacency_matrix, np.zeros(expected_size)]
-
-    def _update_adjacency_matrix_edges(self):
-        """
-        Given an already existing and empty adjacency matrix, add all already existing edges
-        back into the adjacency matrix
-
-        This method is mostly used during rebuilding when a node has been removed
-        """
-
-        # For each edge in the edges list, add it back to the adjacency matrix
-        for u, v in list(self.edges()):
-
-            # Convert the edge names to indices
-            u = self.node_to_index[u]
-            v = self.node_to_index[v]
-
-            # Add the edge into the adjacency matrix
-            self._adjacency_matrix[u, v] = 1
 
     def get_adjacency_matrix(self):
         """
@@ -208,11 +196,10 @@ class AdjacencyDAG(ExtendedDAG):
         """
 
         # Remove the node from the Extended DAG
-        super().remove_node(n)
+        node_id = super().remove_node(n)
 
         # Update the adjacency matrix accordingly
-        # When removing nodes, the adjacency matrix must be reset to avoid inconsistencies
-        self._update_adjacency_matrix(force_reset=True)
+        self._update_adjacency_matrix(removed=[node_id])
 
     def remove_nodes_from(self, nodes):
         """
@@ -234,11 +221,11 @@ class AdjacencyDAG(ExtendedDAG):
         """
 
         # Remove the nodes from the Extended DAG
-        super().remove_node(nodes)
+        nodes_id = super().remove_nodes_from(nodes)
 
         # Update the adjacency matrix accordingly
         # When removing nodes, the adjacency matrix must be reset to avoid inconsistencies
-        self._update_adjacency_matrix(force_reset=True)
+        self._update_adjacency_matrix(removed=nodes_id)
 
     # EDGE MANIPULATION #
 

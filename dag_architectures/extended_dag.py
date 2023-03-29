@@ -261,7 +261,7 @@ class ExtendedDAG(DAG):
         Returns
         -------
         int
-            Index of the removed node
+            Original index of the removed node
 
         Raises
         ------
@@ -307,6 +307,11 @@ class ExtendedDAG(DAG):
         nodes : iterable container
             A container of nodes (list, dict, set, etc.).  If a node
             in the container is not in the graph it is silently ignored.
+
+        Returns
+        -------
+        list[int]
+            Original indices of the removed nodes
 
         Raises
         ------
