@@ -196,18 +196,123 @@ class NodeAdjacencyDAG(ExtendedDAG):
         return torch.from_numpy(self._node_adjacency_list[node])
 
     # NODE MANIPULATION #
-    # TODO - Add node, add nodes from, remove node, remove nodes from
+
+    def add_node(self, node, weight=None, latent=False):
+        """
+        Adds a single node to the Graph.
+
+        Parameters
+        ----------
+        node: str or int
+            The node to add to the graph.
+
+        weight: int, float
+            The weight of the node.
+
+        latent: boolean (default: False)
+            Specifies whether the variable is latent or not.
+
+        Raises
+        ------
+        TypeError
+            If the node is neither an int or a string
+        """
+
+        # Add the node to the Extended DAG
+        super().add_node(node, weight, latent)
+
+        # Update the node adjacencies accordingly
+        self._update_node_adjacency_list()
+
+    def add_nodes_from(self, nodes, weights=None, latent=False):
+        """
+        Add multiple nodes to the Graph.
+
+        Parameters
+        ----------
+        nodes: iterable container
+            A container of nodes (list, dict, set, or any hashable python
+            object).
+
+        weights: list, tuple (default=None)
+            A container of weights (int, float). The weight value at index i
+            is associated with the variable at index i.
+
+        latent: list, tuple (default=False)
+            A container of boolean. The value at index i tells whether the
+            node at index i is latent or not.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
+        """
+
+        # Add the list of nodes to the Extended DAG
+        super().add_nodes_from(nodes, weights, latent)
+
+        # Update the node adjacencies accordingly
+        self._update_node_adjacency_list()
+
+    def remove_node(self, n):
+        """
+        Removes the node n and all adjacent edges. In addition, update all internal dictionaries
+        to avoid inconsistencies.
+
+        Attempting to remove a non-existent node will raise an exception to comply with the
+        original methods.
+
+        Parameters
+        ----------
+        n : str or int
+           A node in the graph
+
+        Raises
+        ------
+        NetworkXError
+           If n is not in the graph.
+        TypeError
+            If the node is neither an int or a string
+        """
+
+        # Remove the node from the Extended DAG
+        node_id = super().remove_node(n)
+
+        # Update the node adjacencies accordingly
+        self._update_node_adjacency_list(removed=[node_id])
+
+    def remove_nodes_from(self, nodes):
+        """
+        Remove multiple nodes.
+
+        If any node in nodes does not belong to the DAG, the removal will silently fail without error
+        to comply with the original methods
+
+        Parameters
+        ----------
+        nodes : iterable container
+            A container of nodes (list, dict, set, etc.).  If a node
+            in the container is not in the graph it is silently ignored.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
+        """
+
+        # Remove the nodes from the Extended DAG
+        nodes_id = super().remove_nodes_from(nodes)
+
+        # Update the node adjacencies accordingly
+        self._update_node_adjacency_list(removed=nodes_id)
+
     # EDGE MANIPULATION #
-    # TODO - Add edges from
-    # TODO - Fix methods to remove initialized
 
     def add_edge(self, u, v, weight=None):
         """
         Add an edge between u and v, and represent said edge within the node adjacency list.
 
         The nodes u and v will be automatically added if they are not already in the graph.
-
-        This method can only be called if initialize_node_adjacency_list was called previously.
 
         Parameters
         ----------
@@ -216,52 +321,89 @@ class NodeAdjacencyDAG(ExtendedDAG):
 
         weight: int, float (default=None)
             The weight of the edge
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
-        # Ensure that the adjacency matrix is already initialized
-        if self.initialized:
+        # Add the edge using the original method
+        super().add_edge(u, v, weight)
 
-            # Add the edge using the original method
-            super().add_edge(u, v, weight)
+        # Update the node adjacencies (in case a new node has been added)
+        self._update_node_adjacency_list()
 
-            # Add the edge to the adjacency matrix
-            self._node_adjacency_list[self.variable_index_dict[v]][self.variable_index_dict[u]] = 1
+        # Ensure that the node names are converted to ints
+        u, v = self.convert_nodes_to_indices(u, v)
 
-        else:
-            raise ValueError
+        # Add the edge to the node adjacency list
+        self._node_adjacency_list[u][v] = 1
+
+    def add_edges_from(self, ebunch, weights=None):
+        """
+        Add all the edges in ebunch to the DAG and the node adjacency list
+
+        If nodes referred in the ebunch are not already present, they
+        will be automatically added.
+
+        Parameters
+        ----------
+        ebunch : list of tuple(str or int, str or int)
+            Each edge given in the container will be added to the graph.
+            The edges must be given as 2-tuples (u, v).
+
+        weights: list, tuple (default=None)
+            A container of weights (int, float). The weight value at index i
+            is associated with the edge at index i.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
+        """
+
+        # Add the edge using the original method
+        super().add_edges_from(ebunch, weights)
+
+        # Update the adjacency matrix (in case a new node has been added)
+        self._update_node_adjacency_list()
+
+        # Add each edge manually to the adjacency matrix
+        for u, v in ebunch:
+            u, v = self.convert_nodes_to_indices(u, v)
+            self._node_adjacency_list[u][v] = 1
 
     def remove_edge(self, u, v):
         """
-        Removes an edge between u and v, and removes the edge within the adjacency matrix.
+        Removes an edge between u and v, and removes the edge within the node adjacency list
 
         The nodes u and v will remain in the graph, even if they no longer have any edges.
-
-        This method can only be called if initialize_node_adjacency_list was called previously.
 
         Parameters
         ----------
         u, v: nodes
             Nodes can be any hashable Python object.
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
-        # Ensure that the adjacency matrix is already initialized
-        if self.initialized:
+        # Remove the edge using the original method
+        super().remove_edge(u, v)
 
-            # Remove the edge using the original method
-            super().add_edge(u, v)
+        # If the nodes are given as names, transform them to ints
+        u, v = self.convert_nodes_to_indices(u, v)
 
-            # Remove the edge from the adjacency matrix
-            self._node_adjacency_list[self.variable_index_dict[v]][self.variable_index_dict[u]] = 0
-
-        else:
-            raise ValueError
+        # Add the edge to the adjacency matrix
+        self._node_adjacency_list[u][v] = 0
 
     def invert_edge(self, u, v, weight=None):
         """
         Inverts the edge between u and v, replacing it with an edge between v and u.
-        Also reflects the change within the adjacency matrix.
-
-        This method can only be called if initialize_node_adjacency_list was called previously.
+        Also reflects the change within the node adjacency list
 
         Parameters
         ----------
@@ -270,17 +412,19 @@ class NodeAdjacencyDAG(ExtendedDAG):
 
         weight: int, float (default=None)
             The weight of the edge
+
+        Raises
+        ------
+        TypeError
+            If a node is neither an int or a string
         """
 
-        # Ensure that the adjacency matrix is already initialized
-        if self.initialized:
+        # Invert the edge using the original method
+        super().invert_edge(u, v, weight)
 
-            # Invert the edge using the original method
-            super().invert_edge(u, v, weight)
+        # If the nodes are given as names, transform them to ints
+        u, v = self.convert_nodes_to_indices(u, v)
 
-            # Invert the edge in the adjacency matrix
-            self._node_adjacency_list[self.variable_index_dict[v]][self.variable_index_dict[u]] = 0
-            self._node_adjacency_list[self.variable_index_dict[u]][self.variable_index_dict[v]] = 1
-
-        else:
-            raise ValueError
+        # Invert the edge in the adjacency matrix
+        self._node_adjacency_list[u][v] = 0
+        self._node_adjacency_list[v][u] = 1

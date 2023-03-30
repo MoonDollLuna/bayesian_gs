@@ -223,7 +223,6 @@ class AdjacencyDAG(ExtendedDAG):
         nodes_id = super().remove_nodes_from(nodes)
 
         # Update the adjacency matrix accordingly
-        # When removing nodes, the adjacency matrix must be reset to avoid inconsistencies
         self._update_adjacency_matrix(removed=nodes_id)
 
     # EDGE MANIPULATION #
@@ -312,7 +311,7 @@ class AdjacencyDAG(ExtendedDAG):
         """
 
         # Remove the edge using the original method
-        super().add_edge(u, v)
+        super().remove_edge(u, v)
 
         # If the nodes are given as names, transform them to ints
         u, v = self.convert_nodes_to_indices(u, v)
