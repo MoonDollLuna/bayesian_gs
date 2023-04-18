@@ -5,6 +5,7 @@
 # IMPORTS #
 from dag_architectures import ExtendedDAG
 from data_processing import BDeUCache
+from utils import LogManager
 
 
 class GreedySearch:
@@ -24,6 +25,8 @@ class GreedySearch:
 
     Parameters
     ----------
+    epsilon: float
+        The Greedy Search process stops once the difference in BDeU score does not improve above this threshold
     """
 
     # ATTRIBUTES #
@@ -40,6 +43,9 @@ class GreedySearch:
     # BDeU cache
     bdeu_cache: BDeUCache
 
+    # Log manager
+    log_manager: LogManager
+
     # Data analysis management #
     # These attributes are stored to be shared with the Log Manager to print
     # and analyze the results of the algorithm
@@ -54,8 +60,20 @@ class GreedySearch:
     # Total time of operation for the algorithm
     time_taken: float
 
-    def __init__(self):
-        pass
+    def __init__(self, epsilon):
+        """
+        Initializes a GreedySearch instance and all necessary auxiliary managers.
+        """
+
+        # Stores the epsilon threshold
+        self.epsilon = epsilon
+
+        # Creates the BDeU cache
+        self.bdeu_cache = BDeUCache()
+
+        # Creates the log manager
+        # TODO - Specify log manager path
+        self.log_manager = LogManager()
 
     def build_DAG(self):
         pass
