@@ -7,4 +7,4 @@ This module contains problem-agnostic structural learning algorithms, designed t
 the structure of a Bayesian Network from data
 """
 
-from .greedy_search import
+from .hill_climbing import

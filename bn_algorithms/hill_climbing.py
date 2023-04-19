@@ -3,6 +3,8 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS #
+from itertools import permutations
+
 import networkx as nx
 from pgmpy.models import BayesianNetwork
 from pandas import DataFrame
@@ -12,9 +14,9 @@ from data_processing import BDeUCache
 from utils import LogManager
 
 
-class GreedySearch:
+class HillClimbing:
     """
-    `GreedySearch` implements a simple Greedy Search approach to Bayesian Network structure building.
+    `HillClimbing` implements a simple Greedy Search approach to Bayesian Network structure building.
 
     The algorithm works in a loop by trying all possible actions over the existing nodes (either adding
     a new edge to the DAG or removing or inverting an already existing one).
@@ -82,7 +84,7 @@ class GreedySearch:
         """
         Prepares all necessary data and structures for Greedy Search.
 
-        `estimate_DAG` generates a DAG optimizing the BDeU score for the specified data.
+        `estimate_dag` generates a DAG optimizing the BDeU score for the specified data.
 
         Parameters
         ----------
@@ -103,23 +105,86 @@ class GreedySearch:
         # TODO - LOG MANAGER PATH
         self.log_manager = LogManager()
 
-    def estimate_DAG(self, starting_DAG=None, epsilon=0.0001, max_iterations=1e6):
+    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6, silent=False):
         """
         TODO FINISH
         TODO AVOID CYCLES
-        Performs Greedy Search to generate
+        Performs Hill Climbing to find a local best DAG based on BDeU.
+
+        Note that the found DAG may not be optimal, but good enough.
+
         Parameters
         ----------
-        starting_DAG
-        epsilon
-        max_iterations
+        starting_dag: ExtendedDAG, optional
+            Starting DAG. If not specified, an empty DAG is used.
+        epsilon: float
+            BDeU threshold. If the BDeU does not improve above the specified threshold,
+            the algorithm stops
+        max_iterations: int
+            Maximum number of iterations to perform.
+        silent: bool
+            Whether warnings and loading screens should be printed on the screen or ignored.
+            A log will be written regardless
 
         Returns
         -------
-
+        ExtendedDAG
         """
 
         # TODO INITIALIZE VARIABLES AND BDEU CACHE
+        # TODO TDQE?
         pass
 
     # TODO LEGAL OPERATIONS
+    # TODO EN EL PROPIO METODO PARA NO HACER DOS PASADAS?
+    def find_legal_operations(self, dag):
+        """
+        Given a DAG and a set of variables, find all legal operations, returning sets of:
+            - All possible edges to add.
+            - All possible edges to remove.
+            - All possible edges to invert.
+
+        This takes care of avoiding possible cycles.
+
+        Parameters
+        ----------
+        dag: ExtendedDAG
+            DAG over which the operations are tried
+
+        Returns
+        -------
+        tuple[set, set, set]
+        """
+
+        # Get the list of nodes from the DAG
+        nodes = list(dag.nodes())
+
+        # EDGE ADDITIONS #
+
+        # Generate the initial set of possible additions (all possible permutations of nodes)
+        add_edges = set(permutations(nodes, 2))
+
+        # Remove invalid edge additions
+        # Remove existing edges
+        add_edges = add_edges - set(dag.edges())
+        # Remove inverted edges that already exist
+        add_edges = add_edges - set([(Y, X) for (X, Y) in dag.edges()])
+        # Remove edges that can lead to a cycle
+        add_edges = add_edges - set([(X, Y) for (X, Y) in add_edges if nx.has_path(dag, Y, X)])
+
+        # EDGE REMOVALS #
+
+        # Generate the initial set of possible removals (only the existing edges)
+        remove_edges = set(dag.edges())
+
+        # EDGE INVERSIONS
+
+        # Generate the initial set of possible removals (only the existing edges)
+        invert_edges = set(dag.edges())
+
+        # Remove the edges that, when inverted, would lead to a cycle
+        invert_edges = invert_edges - set([(X, Y) for (X, Y) in invert_edges if map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y))])
+
+        return add_edges, remove_edges, invert_edges
+
+
