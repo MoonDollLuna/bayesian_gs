@@ -3,6 +3,10 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS #
+import networkx as nx
+from pgmpy.models import BayesianNetwork
+from pandas import DataFrame
+
 from dag_architectures import ExtendedDAG
 from data_processing import BDeUCache
 from utils import LogManager
@@ -25,11 +29,25 @@ class GreedySearch:
 
     Parameters
     ----------
-    epsilon: float
-        The Greedy Search process stops once the difference in BDeU score does not improve above this threshold
+    bayesian_network: BayesianNetwork
+        Original bayesian network, used to measure the structure quality
+    nodes: list
+        List of nodes contained within the data, used to generate the DAG
+    data: DataFrame
+        Dataframe representing the data to be used when building the DAG
     """
 
     # ATTRIBUTES #
+
+    # Bayesian network data #
+    # Data, variables... from the original Bayesian network, used to build the new DAG
+
+    # Original BN (used to compare structure results)
+    bayesian_network: BayesianNetwork
+    # Nodes contained within the data
+    nodes: list
+    # Data from which to generate a DAG
+    data: DataFrame
 
     # Parameters #
     # Parameters to be used by the Greedy Search algorithm
@@ -60,20 +78,48 @@ class GreedySearch:
     # Total time of operation for the algorithm
     time_taken: float
 
-    def __init__(self, epsilon):
+    def __init__(self, bayesian_network, nodes, data):
         """
-        Initializes a GreedySearch instance and all necessary auxiliary managers.
+        Prepares all necessary data and structures for Greedy Search.
+
+        `estimate_DAG` generates a DAG optimizing the BDeU score for the specified data.
+
+        Parameters
+        ----------
+        bayesian_network: BayesianNetwork
+            Original bayesian network, used to measure the structure quality
+        nodes: list
+            List of nodes contained within the data, used to generate the DAG
+        data: DataFrame
+            Dataframe representing the data to be used when building the DAG
         """
 
-        # Stores the epsilon threshold
-        self.epsilon = epsilon
+        # Store the information
+        self.bayesian_network = bayesian_network
+        self.nodes = nodes
+        self.data = data
 
-        # Creates the BDeU cache
-        self.bdeu_cache = BDeUCache()
-
-        # Creates the log manager
-        # TODO - Specify log manager path
+        # Initialize the log manager
+        # TODO - LOG MANAGER PATH
         self.log_manager = LogManager()
 
-    def build_DAG(self):
+    def estimate_DAG(self, starting_DAG=None, epsilon=0.0001, max_iterations=1e6):
+        """
+        TODO FINISH
+        TODO AVOID CYCLES
+        Performs Greedy Search to generate
+        Parameters
+        ----------
+        starting_DAG
+        epsilon
+        max_iterations
+
+        Returns
+        -------
+
+        """
+
+        # TODO INITIALIZE VARIABLES AND BDEU CACHE
         pass
+
+    # TODO LEGAL OPERATIONS
