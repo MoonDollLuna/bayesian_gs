@@ -14,6 +14,57 @@ from data_processing import BDeUCache
 from utils import LogManager
 
 
+def find_legal_operations(dag):
+    """
+    Given a DAG and a set of variables, find all legal operations, returning sets of:
+        - All possible edges to add.
+        - All possible edges to remove.
+        - All possible edges to invert.
+
+    This takes care of avoiding possible cycles.
+
+    Parameters
+    ----------
+    dag: ExtendedDAG
+        DAG over which the operations are tried
+
+    Returns
+    -------
+    tuple[set, set, set]
+    """
+
+    # Get the list of nodes from the DAG
+    nodes = list(dag.nodes())
+
+    # EDGE ADDITIONS #
+
+    # Generate the initial set of possible additions (all possible permutations of nodes)
+    add_edges = set(permutations(nodes, 2))
+
+    # Remove invalid edge additions
+    # Remove existing edges
+    add_edges = add_edges - set(dag.edges())
+    # Remove inverted edges that already exist
+    add_edges = add_edges - set([(Y, X) for (X, Y) in dag.edges()])
+    # Remove edges that can lead to a cycle
+    add_edges = add_edges - set([(X, Y) for (X, Y) in add_edges if nx.has_path(dag, Y, X)])
+
+    # EDGE REMOVALS #
+
+    # Generate the initial set of possible removals (only the existing edges)
+    remove_edges = set(dag.edges())
+
+    # EDGE INVERSIONS
+
+    # Generate the initial set of possible removals (only the existing edges)
+    invert_edges = set(dag.edges())
+
+    # Remove the edges that, when inverted, would lead to a cycle
+    invert_edges = invert_edges - set([(X, Y) for (X, Y) in invert_edges if map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y))])
+
+    return add_edges, remove_edges, invert_edges
+
+
 class HillClimbing:
     """
     `HillClimbing` implements a simple Greedy Search approach to Bayesian Network structure building.
@@ -137,54 +188,6 @@ class HillClimbing:
 
     # TODO LEGAL OPERATIONS
     # TODO EN EL PROPIO METODO PARA NO HACER DOS PASADAS?
-    def find_legal_operations(self, dag):
-        """
-        Given a DAG and a set of variables, find all legal operations, returning sets of:
-            - All possible edges to add.
-            - All possible edges to remove.
-            - All possible edges to invert.
 
-        This takes care of avoiding possible cycles.
-
-        Parameters
-        ----------
-        dag: ExtendedDAG
-            DAG over which the operations are tried
-
-        Returns
-        -------
-        tuple[set, set, set]
-        """
-
-        # Get the list of nodes from the DAG
-        nodes = list(dag.nodes())
-
-        # EDGE ADDITIONS #
-
-        # Generate the initial set of possible additions (all possible permutations of nodes)
-        add_edges = set(permutations(nodes, 2))
-
-        # Remove invalid edge additions
-        # Remove existing edges
-        add_edges = add_edges - set(dag.edges())
-        # Remove inverted edges that already exist
-        add_edges = add_edges - set([(Y, X) for (X, Y) in dag.edges()])
-        # Remove edges that can lead to a cycle
-        add_edges = add_edges - set([(X, Y) for (X, Y) in add_edges if nx.has_path(dag, Y, X)])
-
-        # EDGE REMOVALS #
-
-        # Generate the initial set of possible removals (only the existing edges)
-        remove_edges = set(dag.edges())
-
-        # EDGE INVERSIONS
-
-        # Generate the initial set of possible removals (only the existing edges)
-        invert_edges = set(dag.edges())
-
-        # Remove the edges that, when inverted, would lead to a cycle
-        invert_edges = invert_edges - set([(X, Y) for (X, Y) in invert_edges if map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y))])
-
-        return add_edges, remove_edges, invert_edges
 
 
