@@ -3,15 +3,15 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS #
+from dag_learning import BaseAlgorithm
+from dag_architectures import ExtendedDAG
+
 from itertools import permutations
+from time import time
 
 import networkx as nx
 from pgmpy.models import BayesianNetwork
 from pandas import DataFrame
-
-from dag_architectures import ExtendedDAG
-from data_processing import BDeUCache
-from utils import LogManager
 
 
 def find_legal_hillclimbing_operations(dag):
@@ -65,7 +65,7 @@ def find_legal_hillclimbing_operations(dag):
     return add_edges, remove_edges, invert_edges
 
 
-class HillClimbing:
+class HillClimbing(BaseAlgorithm):
     """
     `HillClimbing` implements a simple Greedy Search approach to Bayesian Network structure building.
 
@@ -90,24 +90,6 @@ class HillClimbing:
         Dataframe representing the data to be used when building the DAG
     """
 
-    # ATTRIBUTES #
-
-    # Bayesian network data #
-    # Data, variables... from the original Bayesian network, used to build the new DAG
-
-    # Original BN (used to compare structure results)
-    bayesian_network: BayesianNetwork
-    # Nodes contained within the data
-    nodes: list
-    # Data from which to generate a DAG
-    data: DataFrame
-
-    # Utilities #
-    # Utilities to be used by the
-
-    # Log manager
-    log_manager: LogManager
-
     def __init__(self, bayesian_network, nodes, data):
         """
         Prepares all necessary data and structures for Greedy Search.
@@ -124,16 +106,11 @@ class HillClimbing:
             Dataframe representing the data to be used when building the DAG
         """
 
-        # Store the information
-        self.bayesian_network = bayesian_network
-        self.nodes = nodes
-        self.data = data
+        # Call the super constructor
+        super().__init__(bayesian_network, nodes, data)
 
-        # Initialize the log manager
-        # TODO - LOG MANAGER PATH
-        self.log_manager = LogManager()
-
-    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6, silent=False):
+    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
+                     wipe_cache=False, logged=True, silent=True):
         """
         TODO FINISH
         Performs Hill Climbing to find a local best DAG based on BDeU.
@@ -149,6 +126,10 @@ class HillClimbing:
             the algorithm stops
         max_iterations: int
             Maximum number of iterations to perform.
+        wipe_cache: bool
+            Whether the BDeU cache should be wiped or not
+        logged: bool
+            Whether the log file is written to or not
         silent: bool
             Whether warnings and loading screens should be printed on the screen or ignored.
             A log will be written regardless
@@ -160,6 +141,18 @@ class HillClimbing:
 
         # LOCAL VARIABLE DECLARATION #
 
+        # Log handling variables #
+        # Iterations performed
+        iterations: int = 0
+
+        # Total operations checked and operations that needed new BDeU calculations
+        total_operations: int = 0
+        computed_operations: int = 0
+
+        # Initial time and current time taken by the algorithm
+        initial_time: float = time()
+        time_taken: float = 0.0
+
         # PARAMETER INITIALIZATION #
 
         # Store the DAG and, if necessary, create an empty one with the existing nodes
@@ -168,9 +161,6 @@ class HillClimbing:
         else:
             dag = ExtendedDAG(self.nodes)
 
-
-
-
-
-
-
+        # If necessary, wipe out the BDeU cache
+        if wipe_cache:
+            self.bdeu_cache.wipe_cache()
