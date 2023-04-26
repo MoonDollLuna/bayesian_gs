@@ -153,6 +153,17 @@ class HillClimbing(BaseAlgorithm):
         initial_time: float = time()
         time_taken: float = 0.0
 
+        # Metrics used to evaluate the resulting DAG
+
+        # BDeu score
+        current_bdeu: float = 0.0
+        # Structural moral hamming distance (SMHD)
+        smhd: int = 0
+        # Average markov mantle
+        average_markov: float = 0
+        # Difference between the original and the resulting Markov mantle
+        average_markov_difference: float = 0
+
         # PARAMETER INITIALIZATION #
 
         # Store the DAG and, if necessary, create an empty one with the existing nodes
@@ -164,3 +175,9 @@ class HillClimbing(BaseAlgorithm):
         # If necessary, wipe out the BDeU cache
         if wipe_cache:
             self.bdeu_cache.wipe_cache()
+
+        # TODO ADD LOG
+
+        # MAIN LOOP #
+
+        # Execute
