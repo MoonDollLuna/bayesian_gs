@@ -16,7 +16,7 @@ from utils import LogManager
 
 def find_legal_operations(dag):
     """
-    Given a DAG and a set of variables, find all legal operations, returning sets of:
+    Given a DAG and a set of variables, find all legal operations, returning three sets containing:
         - All possible edges to add.
         - All possible edges to remove.
         - All possible edges to invert.
@@ -102,34 +102,13 @@ class HillClimbing:
     # Data from which to generate a DAG
     data: DataFrame
 
-    # Parameters #
-    # Parameters to be used by the Greedy Search algorithm
-
-    # Epsilon - the search stops once the difference in BDeU score does not improve above the epsilon threshold
-    epsilon: float
-
     # Utilities #
-    # This includes utilities like the log manager or the BDeU cache
-
-    # BDeU cache
-    bdeu_cache: BDeUCache
+    # Utilities to be used by the
 
     # Log manager
     log_manager: LogManager
 
-    # Data analysis management #
-    # These attributes are stored to be shared with the Log Manager to print
-    # and analyze the results of the algorithm
 
-    # Total operations "tried"
-    # This may include operations for which the BDeU score was previously known
-    total_operations: int
-
-    # Operations that needed to compute a new BDeU score
-    computed_operations: int
-
-    # Total time of operation for the algorithm
-    time_taken: float
 
     def __init__(self, bayesian_network, nodes, data):
         """
@@ -159,7 +138,6 @@ class HillClimbing:
     def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6, silent=False):
         """
         TODO FINISH
-        TODO AVOID CYCLES
         Performs Hill Climbing to find a local best DAG based on BDeU.
 
         Note that the found DAG may not be optimal, but good enough.
@@ -182,12 +160,19 @@ class HillClimbing:
         ExtendedDAG
         """
 
-        # TODO INITIALIZE VARIABLES AND BDEU CACHE
-        # TODO TDQE?
-        pass
+        # LOCAL VARIABLE DECLARATION #
 
-    # TODO LEGAL OPERATIONS
-    # TODO EN EL PROPIO METODO PARA NO HACER DOS PASADAS?
+        # PARAMETER INITIALIZATION #
+
+        # Store the DAG and, if necessary, create an empty one with the existing nodes
+        if starting_dag:
+            dag = starting_dag
+        else:
+            dag = ExtendedDAG(self.nodes)
+
+
+
+
 
 
 
