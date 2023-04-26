@@ -41,7 +41,7 @@ class BDeUCache:
         # Initialize the dictionary
         self._bdeu_scores = {}
 
-    # BDEU RETRIEVAL - INSERTION METHODs
+    # BDEU RETRIEVAL - INSERTION METHODS
     def has_bdeu(self, node, parents):
         """
         Checks if a local BDeU score has already been computed / is contained within the cache
@@ -97,3 +97,12 @@ class BDeUCache:
 
         key = nodes_to_key(node, parents)
         self._bdeu_scores[key] = score
+
+    # HELPER METHODS
+
+    def wipe_cache(self):
+        """
+        Empties the BDeU cache contents.
+        """
+
+        self._bdeu_scores = {}

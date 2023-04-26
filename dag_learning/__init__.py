@@ -7,4 +7,5 @@ This module contains problem-agnostic structural learning algorithms, designed t
 the structure of a Bayesian Network from data
 """
 
-from .hill_climbing import
+from .algorithm_base import BaseAlgorithm
+from .hill_climbing import HillClimbing

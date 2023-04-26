@@ -14,7 +14,7 @@ from data_processing import BDeUCache
 from utils import LogManager
 
 
-def find_legal_operations(dag):
+def find_legal_hillclimbing_operations(dag):
     """
     Given a DAG and a set of variables, find all legal operations, returning three sets containing:
         - All possible edges to add.
@@ -107,8 +107,6 @@ class HillClimbing:
 
     # Log manager
     log_manager: LogManager
-
-
 
     def __init__(self, bayesian_network, nodes, data):
         """
