@@ -10,7 +10,6 @@ from dag_architectures import ExtendedDAG
 from data_processing import BDeUCache
 from utils import LogManager
 
-# TODO COMMENT, FINISH
 class BaseAlgorithm:
     """
     "BaseAlgorithm" provides a basic framework of methods that all DAG learning algorithms must follow.

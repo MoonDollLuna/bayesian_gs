@@ -3,25 +3,33 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS #
+import math
+
 from dag_learning import BaseAlgorithm
 from dag_architectures import ExtendedDAG
 
 from itertools import permutations
 from time import time
+from tqdm import tqdm
 
 import networkx as nx
 from pgmpy.models import BayesianNetwork
+from pgmpy.estimators import BDeuScore
 from pandas import DataFrame
 
 
 def find_legal_hillclimbing_operations(dag):
     """
-    Given a DAG and a set of variables, find all legal operations, returning three sets containing:
+    Given a DAG and a set of variables, find all legal operations, creating three sets containing:
         - All possible edges to add.
         - All possible edges to remove.
         - All possible edges to invert.
 
-    This takes care of avoiding possible cycles.
+    All of these operations are included into a single set, where each element has shape:
+
+        (operation [add, remove, invert], (origin node, destination node))
+
+    This takes care of avoiding possible cycles and trying illegal operations during the hill climbing process.
 
     Parameters
     ----------
@@ -30,7 +38,7 @@ def find_legal_hillclimbing_operations(dag):
 
     Returns
     -------
-    tuple[set, set, set]
+    set
     """
 
     # Get the list of nodes from the DAG
@@ -39,30 +47,31 @@ def find_legal_hillclimbing_operations(dag):
     # EDGE ADDITIONS #
 
     # Generate the initial set of possible additions (all possible permutations of nodes)
-    add_edges = set(permutations(nodes, 2))
+    add_edges = set([("add", permutation) for permutation in permutations(nodes, 2)])
 
     # Remove invalid edge additions
     # Remove existing edges
-    add_edges = add_edges - set(dag.edges())
+    add_edges = add_edges - set([("add", edge) for edge in dag.edges()])
     # Remove inverted edges that already exist
-    add_edges = add_edges - set([(Y, X) for (X, Y) in dag.edges()])
+    add_edges = add_edges - set([("add", (Y, X)) for (X, Y) in dag.edges()])
     # Remove edges that can lead to a cycle
-    add_edges = add_edges - set([(X, Y) for (X, Y) in add_edges if nx.has_path(dag, Y, X)])
+    add_edges = add_edges - set([("add", (X, Y)) for (X, Y) in add_edges if nx.has_path(dag, Y, X)])
 
     # EDGE REMOVALS #
 
     # Generate the initial set of possible removals (only the existing edges)
-    remove_edges = set(dag.edges())
+    remove_edges = set([("remove", edge) for edge in dag.edges()])
 
     # EDGE INVERSIONS
 
     # Generate the initial set of possible removals (only the existing edges)
-    invert_edges = set(dag.edges())
+    invert_edges = set([("invert", edge) for edge in dag.edges()])
 
     # Remove the edges that, when inverted, would lead to a cycle
-    invert_edges = invert_edges - set([(X, Y) for (X, Y) in invert_edges if not any(map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y)))])
+    invert_edges = invert_edges - set([("invert", (X, Y)) for (X, Y) in invert_edges if not any(map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y)))])
 
-    return add_edges, remove_edges, invert_edges
+    # Join all sets into a single set
+    return add_edges | remove_edges | invert_edges
 
 
 class HillClimbing(BaseAlgorithm):
@@ -153,10 +162,15 @@ class HillClimbing(BaseAlgorithm):
         initial_time: float = time()
         time_taken: float = 0.0
 
-        # Metrics used to evaluate the resulting DAG
+        # BDeU metrics #
+        # Best BDeu score
+        best_bdeu: float = 0.0
 
-        # BDeu score
-        current_bdeu: float = 0.0
+        # Delta BDeU (change per iteration)
+        delta_bdeu: float = math.inf
+
+        # Metrics used to evaluate the resulting DAG #
+
         # Structural moral hamming distance (SMHD)
         smhd: int = 0
         # Average markov mantle
@@ -176,8 +190,51 @@ class HillClimbing(BaseAlgorithm):
         if wipe_cache:
             self.bdeu_cache.wipe_cache()
 
-        # TODO ADD LOG
+        # Prepare the BDeU Score estimator
+        bdeu_scorer = BDeuScore(self.data)
 
         # MAIN LOOP #
+        # TODO ADD LOG
 
-        # Execute
+        # Run the loop until:
+        #   - The BDeU score improvement is not above the tolerance threshold
+        #   - The maximum number of iterations is reached
+        while iterations < max_iterations and delta_bdeu > epsilon:
+
+            # Update the iterations
+            iterations += 1
+
+            # Reset the delta and specify the currently taken action
+            delta_bdeu = 0
+            current_best_bdeu = best_bdeu
+            action_taken = None
+
+            # Compute all possible actions for the current DAG
+            actions = find_legal_hillclimbing_operations(dag)
+
+            # Loop through all actions (using TQDM)
+            for action, (X, Y) in tqdm(actions, disable=not silent):
+
+                # Depending on the action:
+                # Addition
+                if action == "add":
+
+                    # Compute the hypothetical parents list
+                    parents_list = dag.get_parents(Y) + [X]
+
+                    # Check if the BDeU already exists
+                    if self.bdeu_cache.has_bdeu(Y, parents_list):
+                        local_bdeu = self.bdeu_cache.get_bdeu_score(Y, parents_list)
+                    else:
+                        # If not, compute the new BDeU score and store it
+                        local_bdeu = bdeu_scorer.local_score(Y, parents_list)
+                        self.bdeu_cache.insert_bdeu_score(Y, parents_list, local_bdeu)
+
+                    # Compute the new current BDeU
+                    current_bdeu = best_bdeu + local_bdeu
+
+                    # If the action improves the BDeU, store it
+                    if current_bdeu > current_best_bdeu:
+                        current_best_bdeu = current_bdeu
+                        action_taken = (action, (X, Y))
+
