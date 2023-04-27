@@ -4,6 +4,7 @@
 
 # IMPORTS #
 from pgmpy.models import BayesianNetwork
+from pgmpy.estimators import BDeuScore
 from pandas import DataFrame
 
 from dag_architectures import ExtendedDAG
@@ -48,6 +49,8 @@ class BaseAlgorithm:
     log_manager: LogManager
     # BDeU cache
     bdeu_cache: BDeUCache
+    # BDeU scorer
+    bdeu_scorer: BDeuScore
 
     # CONSTRUCTOR #
 
@@ -70,7 +73,8 @@ class BaseAlgorithm:
         self.nodes = nodes
         self.data = data
 
-        # Initialize the log manager and BDeU cache
+        # Initialize the utility classes
         # TODO - LOG MANAGER PATH
         self.log_manager = LogManager()
         self.bdeu_cache = BDeUCache()
+        self.bdeu_scorer = BDeuScore(self.data)
