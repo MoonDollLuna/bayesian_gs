@@ -3,7 +3,7 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS #
-from extended_dag import ExtendedDAG
+from dag_architectures import ExtendedDAG
 
 import numpy as np
 import torch

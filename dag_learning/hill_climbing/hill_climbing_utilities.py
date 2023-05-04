@@ -8,6 +8,8 @@ are kept in a different file for ease of reuse.
 """
 
 # IMPORTS #
+from itertools import permutations
+import networkx as nx
 from pgmpy.base import DAG
 
 
@@ -50,7 +52,7 @@ def find_legal_hillclimbing_operations(dag):
     # Remove inverted edges that already exist
     add_edges = add_edges - set([("add", (Y, X)) for (X, Y) in dag.edges()])
     # Remove edges that can lead to a cycle
-    add_edges = add_edges - set([("add", (X, Y)) for (X, Y) in add_edges if nx.has_path(dag, Y, X)])
+    add_edges = add_edges - set([("add", (X, Y)) for (X, Y) in dag.edges() if nx.has_path(dag, Y, X)])
 
     # EDGE REMOVALS #
 
@@ -63,7 +65,7 @@ def find_legal_hillclimbing_operations(dag):
     invert_edges = set([("invert", edge) for edge in dag.edges()])
 
     # Remove the edges that, when inverted, would lead to a cycle
-    invert_edges = invert_edges - set([("invert", (X, Y)) for (X, Y) in invert_edges if not any(map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y)))])
+    invert_edges = invert_edges - set([("invert", (X, Y)) for (_, (X, Y)) in invert_edges if not any(map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y)))])
 
     # Join all sets into a single set
     return add_edges | remove_edges | invert_edges
@@ -89,7 +91,7 @@ def compute_average_markov_mantle(dag):
 
     # Get the total mantle size for all nodes
     total_mantle_size = sum([len(dag.get_markov_blanket(x)) for x in nodes])
-    return total_mantle_size / nodes
+    return total_mantle_size / len(nodes)
 
 
 def compute_smhd(original_dag, obtained_dag):

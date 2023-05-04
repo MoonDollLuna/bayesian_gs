@@ -4,7 +4,7 @@
 
 # IMPORTS #
 from typing import List
-from extended_dag import ExtendedDAG
+from dag_architectures import ExtendedDAG
 
 import numpy as np
 import networkx as nx

@@ -18,7 +18,10 @@ def nodes_to_key(node, parents):
     vector
     """
 
-    return node, set(parents)
+    if parents:
+        return node, tuple(set(parents))
+    else:
+        return node, None
 
 
 class BDeUCache:

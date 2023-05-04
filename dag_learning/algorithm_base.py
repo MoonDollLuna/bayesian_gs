@@ -7,9 +7,9 @@ from pgmpy.models import BayesianNetwork
 from pgmpy.estimators import BDeuScore
 from pandas import DataFrame
 
-from dag_architectures import ExtendedDAG
 from data_processing import BDeUCache
 from utils import LogManager
+
 
 class BaseAlgorithm:
     """
@@ -69,8 +69,10 @@ class BaseAlgorithm:
         """
 
         # Store the information
+        # TODO MAKE BAYESIAN NETWORK OPTIONAL
         self.bayesian_network = bayesian_network
         self.nodes = nodes
+        # TODO ALLOW DATA TO BE READ FROM A CSV
         self.data = data
 
         # Initialize the utility classes

@@ -9,11 +9,12 @@ from dag_learning import BaseAlgorithm, \
     find_legal_hillclimbing_operations, compute_average_markov_mantle, compute_smhd
 from dag_architectures import ExtendedDAG
 
+from pgmpy.models import BayesianNetwork
+from pgmpy.metrics import log_likelihood_score
+from pgmpy.sampling import BayesianModelSampling
+
 from time import time
 from tqdm import tqdm
-
-import networkx as nx
-from pgmpy.models import BayesianNetwork
 from pandas import DataFrame
 
 
@@ -65,7 +66,7 @@ class HillClimbing(BaseAlgorithm):
 
     # MAIN METHODS #
 
-    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
+    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6, test_data_size=10000,
                      wipe_cache=False, logged=True, silent=True):
         """
         TODO FINISH
@@ -82,6 +83,8 @@ class HillClimbing(BaseAlgorithm):
             the algorithm stops
         max_iterations: int
             Maximum number of iterations to perform.
+        test_data_size: int
+            Amount of data to generate when testing the log likelihood
         wipe_cache: bool
             Whether the BDeU cache should be wiped or not
         logged: bool
@@ -118,12 +121,20 @@ class HillClimbing(BaseAlgorithm):
 
         # Metrics used to evaluate the resulting DAG #
 
-        # Structural moral hamming distance (SMHD)
-        smhd: int = 0
+        # Original-model free metrics
+
+        # Log likelihood - How likely the resulting DAG is given a series of data
+        log_likelihood: float = 0
         # Average markov mantle
         average_markov: float = 0
+
+        # Metrics that require an existing Bayesian network
+
+        # Structural moral hamming distance (SMHD)
+        smhd: int = 0
         # Difference between the original and the resulting Markov mantle
         average_markov_difference: float = 0
+
 
         # PARAMETER INITIALIZATION #
 
@@ -154,7 +165,7 @@ class HillClimbing(BaseAlgorithm):
             actions = find_legal_hillclimbing_operations(dag)
 
             # Loop through all actions (using TQDM)
-            for action, (X, Y) in tqdm(actions, disable=not silent):
+            for action, (X, Y) in tqdm(actions, disable=silent):
 
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
@@ -260,6 +271,14 @@ class HillClimbing(BaseAlgorithm):
 
         # Compute the necessary metrics
 
+        # Log likelihood
+        # TODO IF NO ORIGINAL MODEL, USE TRAINING DATA SET
+        # TODO EITHER CONVERT TO BN OR FIND WAY TO DO ON DAG
+
+        # Generate the new data
+        # test_data = BayesianModelSampling(self.bayesian_network).forward_sample(size=test_data_size)
+        # log_likelihood = log_likelihood_score(dag, test_data)
+
         # Average Markov mantle
         average_markov = compute_average_markov_mantle(dag)
 
@@ -268,6 +287,16 @@ class HillClimbing(BaseAlgorithm):
 
         # Structural moral hamming distance (SMHD)
         smhd = compute_smhd(self.bayesian_network, dag)
+
+        # If necessary, print these metrics
+        if not silent:
+            print("Time taken: {}".format(time_taken))
+            # print("Log likelihood: {}".format(log_likelihood))
+            print("Average Markov mantle size: {}".format(average_markov))
+            print("Difference in average Markov mantle sizes: {}".format(average_markov_difference))
+            print("SMHD: {}".format(smhd))
+
+            dag.to_daft().show()
 
         return dag
 
@@ -309,7 +338,7 @@ class HillClimbing(BaseAlgorithm):
         else:
             # BDeU score does not exist: compute it
             original_bdeu = self.bdeu_scorer.local_score(node, original_parents)
-            self.bdeu_cache.insert_bdeu_score(node, original_parents)
+            self.bdeu_cache.insert_bdeu_score(node, original_parents, original_bdeu)
 
             operations += 1
             computed_operations += 1
@@ -324,7 +353,7 @@ class HillClimbing(BaseAlgorithm):
         else:
             # BDeU score does not exist: compute it
             new_bdeu = self.bdeu_scorer.local_score(node, new_parents)
-            self.bdeu_cache.insert_bdeu_score(node, new_parents)
+            self.bdeu_cache.insert_bdeu_score(node, new_parents, new_bdeu)
 
             operations += 1
             computed_operations += 1
