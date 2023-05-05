@@ -93,6 +93,7 @@ class HillClimbing(BaseAlgorithm):
                 - 2: Action taken for each step and final results are printed
                 - 3: Intermediate results for each step are printed
                 - 4: Image of the final graph is printed
+                - 5: DAG is directly printed
         logged: bool
             Whether the log file is written to or not
 
@@ -169,7 +170,7 @@ class HillClimbing(BaseAlgorithm):
             # Loop through all actions (using TQDM) and if necessary print the iteration number
             if verbose >= 2:
                 print("= ITERATION {} =".format(iterations + 1))
-            for action, (X, Y) in tqdm(actions, disable=(verbose > 0)):
+            for action, (X, Y) in tqdm(actions, disable=(verbose == 0)):
 
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
@@ -280,6 +281,11 @@ class HillClimbing(BaseAlgorithm):
                 print("* Computed BDeU checks: {}".format(computed_operations))
                 print("* Total BDeU checks: {}".format(total_operations))
                 print("* Time taken: {}".format(time_taken))
+                print("")
+            if verbose >= 5:
+                print("- Nodes: {}".format(list(dag.nodes)))
+                print("- Edges: {}".format(list(dag.edges)))
+                print("")
 
         # END OF THE LOOP - DAG FINALIZED
 

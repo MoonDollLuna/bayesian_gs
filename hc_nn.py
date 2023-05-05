@@ -21,7 +21,7 @@ data = BayesianModelSampling(model).forward_sample(size=10000)
 
 # Create and launch the model (own)
 hill_climbing = HillClimbing(model, list(model.nodes), data)
-dag = hill_climbing.estimate_dag(verbose=4)
+dag = hill_climbing.estimate_dag(verbose=5)
 
 # Create and launch the model (PGMPY)
 hill_climbing_pgmpy = HillClimbSearch(data)

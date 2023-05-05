@@ -16,6 +16,7 @@ from pgmpy.base import DAG
 # OPERATION COMPUTATION #
 
 def find_legal_hillclimbing_operations(dag):
+    # TODO LOOPS 
     """
     Given a DAG and a set of variables, find all legal operations, creating three sets containing:
         - All possible edges to add.
@@ -45,14 +46,19 @@ def find_legal_hillclimbing_operations(dag):
 
     # Generate the initial set of possible additions (all possible permutations of nodes)
     add_edges = set([("add", permutation) for permutation in permutations(nodes, 2)])
-
+    print(add_edges)
+    print("")
     # Remove invalid edge additions
     # Remove existing edges
-    add_edges = add_edges - set([("add", edge) for edge in dag.edges()])
+    add_edges = add_edges - set([("add", edge) for edge in list(dag.edges)])
     # Remove inverted edges that already exist
-    add_edges = add_edges - set([("add", (Y, X)) for (X, Y) in dag.edges()])
+    add_edges = add_edges - set([("add", (Y, X)) for (X, Y) in list(dag.edges)])
     # Remove edges that can lead to a cycle
-    add_edges = add_edges - set([("add", (X, Y)) for (X, Y) in dag.edges() if nx.has_path(dag, Y, X)])
+    add_edges = add_edges - set([("add", (X, Y)) for (X, Y) in list(dag.edges) if nx.has_path(dag, Y, X)])
+    print("")
+    print(set([("add", (X, Y)) for (X, Y) in dag.edges() if nx.has_path(dag, Y, X)]))
+    print(list(dag.edges))
+    print(add_edges)
 
     # EDGE REMOVALS #
 
@@ -66,6 +72,10 @@ def find_legal_hillclimbing_operations(dag):
 
     # Remove the edges that, when inverted, would lead to a cycle
     invert_edges = invert_edges - set([("invert", (X, Y)) for (_, (X, Y)) in invert_edges if not any(map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y)))])
+
+    print("")
+    print(remove_edges)
+    print(invert_edges)
 
     # Join all sets into a single set
     return add_edges | remove_edges | invert_edges

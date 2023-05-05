@@ -6,7 +6,7 @@
 import networkx as nx
 from pgmpy.base import DAG
 
-
+# TODO REMOVE EDGE
 class ExtendedDAG(DAG):
     """
     Extension of the DAG (Directed Acyclical Graph) class provided by pgmpy, adding additional functionality
@@ -129,6 +129,7 @@ class ExtendedDAG(DAG):
 
         return u, v
 
+    # TODO CHECK FOR BUGS
     def convert_indices_to_nodes(self, u, v):
         """
         Automatically transforms both u and v node indices into node strings
