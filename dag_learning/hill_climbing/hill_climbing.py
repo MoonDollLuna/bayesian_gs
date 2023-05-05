@@ -67,9 +67,8 @@ class HillClimbing(BaseAlgorithm):
     # MAIN METHODS #
 
     def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6, test_data_size=10000,
-                     wipe_cache=False, logged=True, silent=True):
+                     wipe_cache=False, verbose=0, logged=True):
         """
-        TODO FINISH
         Performs Hill Climbing to find a local best DAG based on BDeU.
 
         Note that the found DAG may not be optimal, but good enough.
@@ -87,11 +86,15 @@ class HillClimbing(BaseAlgorithm):
             Amount of data to generate when testing the log likelihood
         wipe_cache: bool
             Whether the BDeU cache should be wiped or not
+        verbose: int, default = 0
+            Verbosity of the program, where:
+                - 0: No information is printed
+                - 1: Progress bar for each iteration is printed
+                - 2: Action taken for each step and final results are printed
+                - 3: Intermediate results for each step are printed
+                - 4: Image of the final graph is printed
         logged: bool
             Whether the log file is written to or not
-        silent: bool
-            Whether warnings and loading screens should be printed on the screen or ignored.
-            A log will be written regardless
 
         Returns
         -------
@@ -135,7 +138,6 @@ class HillClimbing(BaseAlgorithm):
         # Difference between the original and the resulting Markov mantle
         average_markov_difference: float = 0
 
-
         # PARAMETER INITIALIZATION #
 
         # Store the DAG and, if necessary, create an empty one with the existing nodes
@@ -164,8 +166,10 @@ class HillClimbing(BaseAlgorithm):
             # Compute all possible actions for the current DAG
             actions = find_legal_hillclimbing_operations(dag)
 
-            # Loop through all actions (using TQDM)
-            for action, (X, Y) in tqdm(actions, disable=silent):
+            # Loop through all actions (using TQDM) and if necessary print the iteration number
+            if verbose >= 2:
+                print("= ITERATION {} =".format(iterations + 1))
+            for action, (X, Y) in tqdm(actions, disable=(verbose > 0)):
 
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
@@ -267,6 +271,16 @@ class HillClimbing(BaseAlgorithm):
             iterations += 1
             time_taken = time() - initial_time
 
+            # Print the required information according to the verbosity level
+            if verbose >= 2:
+                print("- Action taken: {}".format(action_taken))
+            if verbose >= 3:
+                print("* Current BDeU: {}".format(current_best_bdeu))
+                print("* BDeU delta: {}".format(bdeu_delta))
+                print("* Computed BDeU checks: {}".format(computed_operations))
+                print("* Total BDeU checks: {}".format(total_operations))
+                print("* Time taken: {}".format(time_taken))
+
         # END OF THE LOOP - DAG FINALIZED
 
         # Compute the necessary metrics
@@ -283,19 +297,20 @@ class HillClimbing(BaseAlgorithm):
         average_markov = compute_average_markov_mantle(dag)
 
         # Average Markov mantle difference
-        average_markov_difference = compute_average_markov_mantle(self.bayesian_network) - average_markov
+        average_markov_difference = abs(compute_average_markov_mantle(self.bayesian_network) - average_markov)
 
         # Structural moral hamming distance (SMHD)
         smhd = compute_smhd(self.bayesian_network, dag)
 
         # If necessary, print these metrics
-        if not silent:
-            print("Time taken: {}".format(time_taken))
+        if verbose >= 2:
+            print("\n FINAL RESULTS \n\n")
+            print("- Time taken: {}".format(time_taken))
             # print("Log likelihood: {}".format(log_likelihood))
-            print("Average Markov mantle size: {}".format(average_markov))
-            print("Difference in average Markov mantle sizes: {}".format(average_markov_difference))
-            print("SMHD: {}".format(smhd))
-
+            print("- Average Markov mantle size: {}".format(average_markov))
+            print("- Difference in average Markov mantle sizes: {}".format(average_markov_difference))
+            print("- SMHD: {}".format(smhd))
+        if verbose >= 4:
             dag.to_daft().show()
 
         return dag
