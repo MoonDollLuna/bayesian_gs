@@ -154,6 +154,21 @@ class HillClimbing(BaseAlgorithm):
         # MAIN LOOP #
         # TODO ADD LOG
 
+        # Compute the initial BDeU score
+        # It is assumed that none of these scores will have been computed before
+        for node in dag.nodes:
+
+            # Compute the BDeU for each node
+            best_bdeu += self.bdeu_scorer.local_score(node, dag.get_parents(node))
+
+            # Update the metrics
+            computed_operations += 1
+            total_operations += 1
+
+        # If necessary, output the initial BDeU score
+        if verbose >= 3:
+            print("Initial BDeU score: {}".format(best_bdeu))
+
         # Run the loop until:
         #   - The BDeU score improvement is not above the tolerance threshold
         #   - The maximum number of iterations is reached
