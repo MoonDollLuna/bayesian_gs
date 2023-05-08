@@ -112,6 +112,11 @@ class HillClimbing(BaseAlgorithm):
         total_operations: int = 0
         computed_operations: int = 0
 
+        # Number of operations performed of each type
+        add_operations: int = 0
+        remove_operations: int = 0
+        invert_operations: int = 0
+
         # Initial time and current time taken by the algorithm
         initial_time: float = time()
         time_taken: float = 0.0
@@ -156,7 +161,7 @@ class HillClimbing(BaseAlgorithm):
 
         # Compute the initial BDeU score
         # It is assumed that none of these scores will have been computed before
-        for node in dag.nodes:
+        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=(verbose==0)):
 
             # Compute the BDeU for each node
             best_bdeu += self.bdeu_scorer.local_score(node, dag.get_parents(node))
@@ -182,10 +187,8 @@ class HillClimbing(BaseAlgorithm):
             # Compute all possible actions for the current DAG
             actions = find_legal_hillclimbing_operations(dag)
 
-            # Loop through all actions (using TQDM) and if necessary print the iteration number
-            if verbose >= 2:
-                print("= ITERATION {} =".format(iterations + 1))
-            for action, (X, Y) in tqdm(actions, disable=(verbose == 0)):
+            # Loop through all actions (using TQDM)
+            for action, (X, Y) in tqdm(actions, desc=("= ITERATION {}: ".format(iterations + 1)), disable=(verbose == 0)):
 
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
@@ -274,10 +277,13 @@ class HillClimbing(BaseAlgorithm):
 
                 if operation == "add":
                     dag.add_edge(X, Y)
+                    add_operations += 1
                 elif operation == "remove":
                     dag.remove_edge(X, Y)
+                    remove_operations += 1
                 elif operation == "invert":
                     dag.invert_edge(X, Y)
+                    invert_operations += 1
 
                 # Store the best bdeu
                 best_bdeu = current_best_bdeu
@@ -326,11 +332,18 @@ class HillClimbing(BaseAlgorithm):
         # If necessary, print these metrics
         if verbose >= 2:
             print("\n FINAL RESULTS \n\n")
-            print("- Time taken: {}".format(time_taken))
+            print("- Time taken: {}\n".format(time_taken))
+
+            print("- Operations performed:")
+            print("\t* Additions: {}".format(add_operations))
+            print("\t* Removals: {}".format(remove_operations))
+            print("\t* Inversions: {}\n".format(invert_operations))
+
             # print("Log likelihood: {}".format(log_likelihood))
             print("- Average Markov mantle size: {}".format(average_markov))
             print("- Difference in average Markov mantle sizes: {}".format(average_markov_difference))
             print("- SMHD: {}".format(smhd))
+
         if verbose >= 4:
             dag.to_daft().show()
 

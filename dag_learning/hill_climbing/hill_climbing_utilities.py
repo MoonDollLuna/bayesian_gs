@@ -68,9 +68,6 @@ def find_legal_hillclimbing_operations(dag):
     # Remove the edges that, when inverted, would lead to a cycle
     invert_edges = invert_edges - set([("invert", (X, Y)) for (_, (X, Y)) in invert_edges if not any(map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y)))])
 
-    print(remove_edges)
-    print(invert_edges)
-
     # Join all sets into a single set
     return add_edges | remove_edges | invert_edges
 
