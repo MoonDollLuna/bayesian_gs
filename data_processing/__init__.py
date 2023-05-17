@@ -8,5 +8,4 @@ This module contains all data-processing related classes, including:
     - Handling of the training memory for the Neural Networks
 """
 
-from .bdeu_cache import BDeUCache
 from .training_memory import TrainingMemory
