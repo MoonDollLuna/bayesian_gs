@@ -47,13 +47,78 @@ class BDeuScore:
     # Equivalent Sample Size
     esz: int
 
-    # CONSTRUCTOR #
+    # CONSTRUCTOR AND INITIALIZATION METHODS #
     def __init__(self, data, equivalent_sample_size=10, nodes=None):
 
-        # Store the numpy array or, if necessary, convert it into a numpy array
+        # Process the input data and, if necessary, convert it into a numpy array
         if isinstance(data, np.ndarray):
             self.data = data
+            self._initialize_dictionaries(nodes)
         elif isinstance(data, DataFrame):
             self.data = data.to_numpy()
+            self._initialize_dictionaries(data.columns.values.tolist())
         else:
             raise TypeError("Data must be provided as a Numpy array or a Pandas dataframe")
+
+        # Store the equivalent sample size
+        self.esz = equivalent_sample_size
+
+    def _initialize_dictionaries(self, variable_names):
+        """
+        Given a list of the variable names, initializes the internal dictionaries
+        for faster lookup.
+
+        Parameters
+        ----------
+        variable_names: list[str]
+            Ordered list of the variables contained within the data
+        """
+
+        # Initialize both dictionaries
+        self.node_index = {}
+        self.node_values = {}
+
+        # Get the index and name of each variable
+        for index, name in enumerate(variable_names):
+
+            # Store the index
+            self.node_index[name] = index
+
+            # Get the unique values in the column
+            self.node_values[name] = np.unique(self.data[:, index]).tolist()
+
+    # SCORE FUNCTIONS #
+
+    def local_score(self, variable, parents):
+        """
+        Computes the local BDeu score for a variable given a list of parents.
+
+        Parameters
+        ----------
+        variable: str
+            Child variable of which the BDeu score is being computed
+        parents: list[str]
+            List of parent variables that influence the child variable. If the variables
+            have no parents, an empty list must be passed instead.
+
+        Returns
+        -------
+        float
+            BDeu score
+        """
+
+        # PRE - PROCESSING
+
+        # Get the variable states and number of possible values
+        variable_states = self.node_values[variable]
+        variable_length = len(variable_states)
+
+        # Generate a list with all possible parent values (per variable)
+        parent_states = [self.node_values[parent] for parent in parents]
+        parent_length = sum([len(parent) for parent in parent_states])
+
+        # If no parents are specified, parent length must be 1
+        if parent_length == 0:
+            parent_length = 1
+
+        # Number
