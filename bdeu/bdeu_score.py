@@ -3,6 +3,8 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS #
+from itertools import product
+
 import numpy as np
 from pandas import DataFrame
 
@@ -121,4 +123,92 @@ class BDeuScore:
         if parent_length == 0:
             parent_length = 1
 
-        # Number
+        # Generate all possible combinations of parent states
+        parent_state_combinations = list(product(*parent_states))
+
+        state_counts = self.get_state_counts(variable, variable_states, parents, parent_state_combinations)
+
+    def get_state_counts(self, variable, variable_states, parents, parent_state_combinations):
+        """
+        For each combination of parent states, returns the count of each variable state
+        for each combination of parent states.
+
+        Parameters
+        ----------
+        variable : str
+            Variable of which the states are counted
+        variable_states : list[str]
+            List of all states of the variable
+        parents : list[str]
+            List of parents of the variable
+        parent_state_combinations : list[list[str]]
+            List of all possible combination of parent variables' states
+
+        Returns
+        -------
+        np.ndarray
+            Array where each row represents a state of the variable, each column represents
+            a combination of parent variable states and each cell represents the count of said
+            variable state for the given parents
+        """
+
+        # Initialize the numpy array to be returned
+        counts_array = np.zeros((len(variable_states), len(parent_state_combinations)))
+
+        # Generate and apply all necessary masks
+        masks = self._get_array_masks(parents, parent_state_combinations)
+        for mask_index, mask in enumerate(masks):
+
+            # Apply the mask to the data array to only keep the relevant columns
+            masked_data = self.data[mask]
+
+            # Count the instances of the child variable for each state
+            variable_index = self.node_index[variable]
+            masked_variable = masked_data[:, variable_index]
+            states, state_counts = np.unique(masked_variable, return_counts=True)
+            counts_dict = dict(zip(states, state_counts))
+
+            # Store the counts for each variable state
+            for state_index, state in enumerate(variable_states):
+
+                # If the state has not appeared in the count, it is set to zero
+                counts_array[mask_index, state_index] = counts_dict[state] if state in counts_dict else 0
+
+        return counts_array
+
+    def _get_array_masks(self, parents, parent_state_combinations):
+        """
+        Generates all array masks to apply over the data array
+
+        Parameters
+        ----------
+        parents : list[str]
+            List of parents of the variable
+        parent_state_combinations : list[list[str]]
+            List of all possible combination of parent variables' states
+
+        Returns
+        -------
+        list[np.ndarray]
+            List of all masks to apply to the data
+        """
+
+        # Create a list to store all possible masks
+        masks = []
+
+        # For each combination of parents, generate a mask
+        for combination in parent_state_combinations:
+
+            # Generate an initial, all true mask equal to the length of the data array
+            mask = np.full(self.data.shape[1], True)
+
+            # Apply the appropriate condition for all parent states
+            for parent, parent_state in zip(parents, combination):
+
+                parent_index = self.node_index[parent]
+                mask = mask & (self.data[:, parent_index] == parent_state)
+
+            # Store the mask
+            masks.append(mask)
+
+        return masks
