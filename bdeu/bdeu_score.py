@@ -1,12 +1,13 @@
 # BAYESIAN NETWORK - NN GS SPEEDUP #
 # Developed by Luna Jimenez Fernandez
 # Based on the work of Wenfeng Zhang et al.
-
+import math
 # IMPORTS #
 from itertools import product
 
 import numpy as np
 from pandas import DataFrame
+from scipy.special import gammaln
 
 
 class BDeuScore:
@@ -95,6 +96,9 @@ class BDeuScore:
         """
         Computes the local BDeu score for a variable given a list of parents.
 
+        This code is based on pgmpy's BDeu Scorer implementation, but modified to speed up the calculation
+        by using a numpy array instead of a Pandas dataframe.
+
         Parameters
         ----------
         variable: str
@@ -109,24 +113,72 @@ class BDeuScore:
             BDeu score
         """
 
-        # PRE - PROCESSING
+        # PRE - PROCESSING #
 
         # Get the variable states and number of possible values
         variable_states = self.node_values[variable]
         variable_length = len(variable_states)
 
         # Generate a list with all possible parent values (per variable)
+        # (if no parents are specified, the parent length is assumed to be 1)
         parent_states = [self.node_values[parent] for parent in parents]
-        parent_length = sum([len(parent) for parent in parent_states])
-
-        # If no parents are specified, parent length must be 1
-        if parent_length == 0:
-            parent_length = 1
+        parent_length = math.prod([len(parent) for parent in parent_states])
 
         # Generate all possible combinations of parent states
         parent_state_combinations = list(product(*parent_states))
 
+        # Get the count of each variable state for each combination of parents
         state_counts = self.get_state_counts(variable, variable_states, parents, parent_state_combinations)
+
+        # BDEU CALCULATION #
+
+        # Compute constants #
+        # Alpha - (equivalent sample size / number of parent states)
+        alpha = self.esz / parent_length
+        # Beta - (equivalent sample size / number of child and parent states)
+        beta = self.esz / (parent_length * variable_length)
+
+        # SECOND TERM (variable term) (ln(gamma(state counts + beta) / gamma(beta)) #
+        # Instead of applying log to each division, sum(nominators) - sum(denominators) will be applied
+        # for vectorization
+
+        # Numerator (ln (gamma(state counts + beta))
+        # Apply ln(gamma) to each (state count + beta)
+        log_gamma_state_counts = gammaln(state_counts + beta)
+        # Add up all values
+        variable_numerator = np.sum(log_gamma_state_counts)
+
+        # Denominator (ln (gamma(beta))
+        # Compute the log gamma value and multiply it for all existing state combinations
+        variable_denominator = math.lgamma(beta) * (variable_length * parent_length)
+
+        # Subtract both terms to obtain the final log result
+        variable_value = variable_numerator - variable_denominator
+
+        # FIRST TERM (parents term) (ln(gamma(alpha) / gamma(parents state counts + alpha))
+        # Instead of applying log to each division, sum(nominators) - sum(denominators) will be applied
+        # for vectorization
+
+        # Obtain the total count for each parent state combinations by collapsing the state counts
+        parent_state_counts = np.sum(state_counts, axis=0)
+
+        # Numerator (ln (gamma(alpha))
+        # Compute the log gamma value and multiply it for all existing parent state combinations
+        parent_numerator = math.lgamma(alpha) * parent_length
+
+        # Denominator (ln (gamma(parents state counts + alpha))
+        # Apply ln(gamma) to each (parent state count + alpha)
+        log_gamma_parent_state_counts = gammaln(parent_state_counts + alpha)
+        # Add up all values
+        parent_denominator = np.sum(log_gamma_parent_state_counts)
+
+        # Subtract both terms to obtain the final log result
+        parent_value = parent_numerator - parent_denominator
+
+        # FINAL BDEU SCORE #
+
+        # Given both parent and variable terms, return the sum
+        return variable_value + parent_value
 
     def get_state_counts(self, variable, variable_states, parents, parent_state_combinations):
         """
@@ -172,7 +224,7 @@ class BDeuScore:
             for state_index, state in enumerate(variable_states):
 
                 # If the state has not appeared in the count, it is set to zero
-                counts_array[mask_index, state_index] = counts_dict[state] if state in counts_dict else 0
+                counts_array[state_index, mask_index] = counts_dict[state] if state in counts_dict else 0
 
         return counts_array
 
@@ -191,6 +243,8 @@ class BDeuScore:
         -------
         list[np.ndarray]
             List of all masks to apply to the data
+
+        TODO MOVE INTO STATE COUNTS METHOD TO AVOID DUPLICATE LOOPS
         """
 
         # Create a list to store all possible masks
