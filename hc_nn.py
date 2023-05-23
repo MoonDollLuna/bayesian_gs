@@ -17,7 +17,7 @@ from dag_learning import HillClimbing
 BIF = BIFReader("./input/bif/large/hailfinder.bif")
 model = BIF.get_model()
 
-# Sample an example amount of data (1000 data)
+# Sample an example amount of data (10000 data)
 data = BayesianModelSampling(model).forward_sample(size=10000)
 
 # Create and launch the model (own)

@@ -30,10 +30,11 @@ class BDeuScore:
         TODO Add from csv
     equivalent_sample_size: int, default=10
         Equivalent sample size for the BDeu score computation.
-    count_method: {"forloop", "mask"}, default="forloop"
+    count_method: {"forloop", "unique", "mask"}, default="unique"
         Method used to count state frequencies. Possible values:
 
             * "forloop": Standard for loop
+            * "unique": np.unique over the sliced dataset
             * "mask": Masking to segment the dataset into smaller datasets with each parent state combinations
     nodes: list[str], optional
         List of ordered names of all variables. If not given, names will be extracted from the data.
@@ -58,14 +59,14 @@ class BDeuScore:
     count_method: str
 
     # CONSTRUCTOR AND INITIALIZATION METHODS #
-    def __init__(self, data, equivalent_sample_size=10, count_method="forloop", nodes=None):
+    def __init__(self, data, equivalent_sample_size=10, count_method="unique", nodes=None):
 
         # Process the input data and, if necessary, convert it into a numpy array
         if isinstance(data, np.ndarray):
             self.data = data
             self._initialize_dictionaries(nodes)
         elif isinstance(data, DataFrame):
-            self.data = data.to_numpy()
+            self.data = data.to_numpy(dtype='<U8')
             self._initialize_dictionaries(data.columns.values.tolist())
         else:
             raise TypeError("Data must be provided as a Numpy array or a Pandas dataframe")
@@ -138,7 +139,9 @@ class BDeuScore:
         parent_state_combinations = list(product(*parent_states))
 
         # Get the count of each variable state for each combination of parents
-        if self.count_method == "forloop":
+        if self.count_method == "unique":
+            state_counts = self.get_state_counts_unique(variable, variable_states, parents, parent_state_combinations)
+        elif self.count_method == "forloop":
             state_counts = self.get_state_counts_for(variable, variable_states, parents, parent_state_combinations)
         elif self.count_method == "mask":
             state_counts = self.get_state_counts_mask(variable, variable_states, parents, parent_state_combinations)
@@ -193,6 +196,65 @@ class BDeuScore:
         # Given both parent and variable terms, return the sum
         return variable_value + parent_value
 
+        # UNIQUE STATE COUNT #
+
+    def get_state_counts_unique(self, variable, variable_states, parents, parent_state_combinations):
+        """
+        For each combination of parent states, returns the count of each variable state.
+
+        This method utilizes masks to filter the numpy array.
+
+        Parameters
+        ----------
+        variable : str
+            Variable of which the states are counted
+        variable_states : list[str]
+            List of all states of the variable
+        parents : list[str]
+            List of parents of the variable
+        parent_state_combinations : list[tuple[str]]
+            List of all possible combination of parent variables' states
+
+        Returns
+        -------
+        np.ndarray
+            Array where each row represents a state of the variable, each column represents
+            a combination of parent variable states and each cell represents the count of said
+            variable state for the given parents
+        """
+
+        # Initialize the numpy array to be returned
+        counts_array = np.zeros((len(variable_states), len(parent_state_combinations)))
+
+        # Generate dictionaries to know the index of each element (both variable and parent combination)
+        variable_states_dict = {state: index for index, state in enumerate(variable_states)}
+        parent_states_dict = {state_combination: index
+                              for index, state_combination
+                              in enumerate(parent_state_combinations)}
+
+        # Generate the list of parent indices to consider
+        parent_indices = [self.node_index[parent] for parent in parents]
+
+        # Add the actual variable index to the front
+        indices = [self.node_index[variable]] + parent_indices
+
+        # Slice the numpy array using said indices
+        sliced_array = self.data[:, indices]
+
+        # Count the occurrences of each combination of variable and parent states using unique
+        state_combinations, state_combinations_counts = np.unique(sliced_array, axis=0, return_counts=True)
+
+        # Move the counts into the numpy array
+        for state_combination, state_combination_count in zip(state_combinations, state_combinations_counts):
+            # Get the row and column
+            row = variable_states_dict[state_combination[0]]
+            column = parent_states_dict[tuple(state_combination[1:])]
+
+            # Update the count
+            counts_array[row, column] = state_combination_count
+
+        return counts_array
+
     # FOR STATE COUNT #
     def get_state_counts_for(self, variable, variable_states, parents, parent_state_combinations):
         """
@@ -240,9 +302,6 @@ class BDeuScore:
             counts_array[variable_states_dict[state], parent_states_dict[parent_states]] += 1
 
         return counts_array
-
-    # todo UNIQUE
-    # TODO BINCOUNT
 
     # MASK STATE COUNT #
 
