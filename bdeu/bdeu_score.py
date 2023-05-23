@@ -233,9 +233,11 @@ class BDeuScore:
 
             # Find the tuple of parent values
             parent_states = tuple([row[self.node_index[parent]] for parent in parents])
+            # Find the value of the variable
+            state = row[self.node_index[variable]]
 
             # Increment the appropriate cell
-            counts_array[variable_states_dict[self.node_index[variable]], parent_states_dict[parent_states]] += 1
+            counts_array[variable_states_dict[state], parent_states_dict[parent_states]] += 1
 
         return counts_array
 
