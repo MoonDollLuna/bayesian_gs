@@ -161,7 +161,7 @@ class HillClimbing(BaseAlgorithm):
 
         # Compute the initial BDeU score
         # It is assumed that none of these scores will have been computed before
-        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=(verbose==0)):
+        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=(verbose == 0)):
 
             # Compute the BDeU for each node
             best_bdeu += self.bdeu_scorer.local_score(node, dag.get_parents(node))
@@ -188,7 +188,9 @@ class HillClimbing(BaseAlgorithm):
             actions = find_legal_hillclimbing_operations(dag)
 
             # Loop through all actions (using TQDM)
-            for action, (X, Y) in tqdm(actions, desc=("= ITERATION {}: ".format(iterations + 1)), disable=(verbose == 0)):
+            for action, (X, Y) in tqdm(actions,
+                                       desc=("= ITERATION {}: ".format(iterations + 1)),
+                                       disable=(verbose == 0)):
 
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
@@ -199,7 +201,8 @@ class HillClimbing(BaseAlgorithm):
                     new_parents_list = original_parents_list + [X]
 
                     # Compute the BDeU delta and the possible new BDeU score
-                    current_bdeu_delta, local_total_operations, local_operations_computed = self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
+                    current_bdeu_delta, local_total_operations, local_operations_computed = \
+                        self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
                     current_bdeu = best_bdeu + current_bdeu_delta
 
                     # Update the metrics
@@ -221,7 +224,8 @@ class HillClimbing(BaseAlgorithm):
                     new_parents_list = original_parents_list[:].remove(X)
 
                     # Compute the BDeU delta and the possible new BDeU score
-                    current_bdeu_delta, local_total_operations, local_operations_computed = self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
+                    current_bdeu_delta, local_total_operations, local_operations_computed = \
+                        self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
                     current_bdeu = best_bdeu + current_bdeu_delta
 
                     # Update the metrics
@@ -248,10 +252,10 @@ class HillClimbing(BaseAlgorithm):
                     new_y_parents_list = original_y_parents_list[:].remove(X)
 
                     # Compute the BDeU deltas
-                    current_x_bdeu_delta, local_total_x_operations, local_x_operations_computed = self._compute_bdeu_delta(
-                        X, original_x_parents_list, new_x_parents_list)
-                    current_y_bdeu_delta, local_total_y_operations, local_y_operations_computed = self._compute_bdeu_delta(
-                        Y, original_y_parents_list, new_y_parents_list)
+                    current_x_bdeu_delta, local_total_x_operations, local_x_operations_computed = \
+                        self._compute_bdeu_delta(X, original_x_parents_list, new_x_parents_list)
+                    current_y_bdeu_delta, local_total_y_operations, local_y_operations_computed = \
+                        self._compute_bdeu_delta(Y, original_y_parents_list, new_y_parents_list)
 
                     current_bdeu_delta = current_x_bdeu_delta + current_y_bdeu_delta
                     current_bdeu = best_bdeu + current_bdeu_delta

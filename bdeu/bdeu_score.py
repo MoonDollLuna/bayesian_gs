@@ -110,7 +110,7 @@ class BDeuScore:
         Returns
         -------
         float
-            BDeu score
+            Local BDeu score
         """
 
         # PRE - PROCESSING #
@@ -254,7 +254,7 @@ class BDeuScore:
         for combination in parent_state_combinations:
 
             # Generate an initial, all true mask equal to the length of the data array
-            mask = np.full(self.data.shape[1], True)
+            mask = np.full(self.data.shape[0], True)
 
             # Apply the appropriate condition for all parent states
             for parent, parent_state in zip(parents, combination):

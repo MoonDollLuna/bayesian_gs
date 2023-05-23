@@ -4,10 +4,9 @@
 
 # IMPORTS #
 from pgmpy.models import BayesianNetwork
-from pgmpy.estimators import BDeuScore
 from pandas import DataFrame
 
-from data_processing import BDeUCache
+from bdeu import BDeUCache, BDeuScore
 from utils import LogManager
 
 
