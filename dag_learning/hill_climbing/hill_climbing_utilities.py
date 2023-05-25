@@ -16,7 +16,7 @@ from pgmpy.base import DAG
 # OPERATION COMPUTATION #
 
 def find_legal_hillclimbing_operations(dag):
-    # TODO LOOPS 
+    # TODO LOOPS
     """
     Given a DAG and a set of variables, find all legal operations, creating three sets containing:
         - All possible edges to add.
@@ -27,7 +27,7 @@ def find_legal_hillclimbing_operations(dag):
 
         (operation [add, remove, invert], (origin node, destination node))
 
-    This takes care of avoiding possible cycles and trying illegal operations during the hill climbing process.
+    This method filters all actions that may lead to illegal DAGs (cycles).
 
     Parameters
     ----------
@@ -66,11 +66,57 @@ def find_legal_hillclimbing_operations(dag):
     invert_edges = set([("invert", edge) for edge in list(dag.edges)])
 
     # Remove the edges that, when inverted, would lead to a cycle
-    invert_edges = invert_edges - set([("invert", (X, Y)) for (_, (X, Y)) in invert_edges if not any(map(lambda path: len(path) > 2, nx.all_simple_paths(dag, X, Y)))])
+    invert_edges = invert_edges - set([("invert", (X, Y))
+                                       for (_, (X, Y))
+                                       in invert_edges
+                                       if has_path_inversion(dag, X, Y)])
 
     # Join all sets into a single set
     return add_edges | remove_edges | invert_edges
 
+
+def has_path_inversion(dag, source, target):
+    """
+    Returns True if there is a path in between source and target OTHER THAN the already existing path
+    between source and target.
+
+    This method is used to check for possible loops during inversion in an efficient way. To do this, the
+    existing edge between source and target is temporarily removed before calling the (efficient)
+    NetworkX has_path method.
+
+    Parameters
+    ----------
+    dag: DAG
+        Directed Acyclic Graph on which the path is checked
+    source: str
+        Starting node of the path
+    target: str
+        Ending node of the path
+
+    Returns
+    -------
+    bool
+    """
+
+    # Internally remove the already existing path
+    # For sanity checking, we check for exceptions (if the edge does not exist, an exception will be raised)
+
+    edge_removed = True
+    try:
+        dag.remove_edge(source, target)
+    except nx.NetworkXError:
+        edge_removed = False
+
+    # Check for a path
+    path_found = nx.has_path(dag, source, target)
+
+    # If necessary, rebuild the edge
+    if edge_removed:
+        dag.add_edge(source, target)
+
+    return path_found
+
+# STATISTIC COMPUTATIONS #
 
 def compute_average_markov_mantle(dag):
     """
