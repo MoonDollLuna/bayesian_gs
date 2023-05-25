@@ -422,7 +422,7 @@ class ExtendedDAG(DAG):
         """
 
         # Ensure that the inputs are either ints or strings
-        if not all(isinstance(node, (int, str)) for node in ebunch):
+        if not all([isinstance(start, (int, str)) and isinstance(end, (int, str)) for start, end in ebunch]):
             raise TypeError("Nodes must be either strings or integers")
 
         # For all pair of edges, check if u and v exist
