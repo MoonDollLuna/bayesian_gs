@@ -6,6 +6,7 @@
 import networkx as nx
 from pgmpy.base import DAG
 
+
 # TODO REMOVE EDGE
 class ExtendedDAG(DAG):
     """
@@ -129,7 +130,6 @@ class ExtendedDAG(DAG):
 
         return u, v
 
-    # TODO CHECK FOR BUGS
     def convert_indices_to_nodes(self, u, v):
         """
         Automatically transforms both u and v node indices into node strings
@@ -230,6 +230,10 @@ class ExtendedDAG(DAG):
         TypeError
             If a node is neither an int or a string
         """
+
+        # Ignore None type objects
+        if nodes is None:
+            return
 
         # Check that all elements in the list are either integers or strings
         if not all(isinstance(node, (int, str)) for node in nodes):
@@ -469,11 +473,11 @@ class ExtendedDAG(DAG):
         """
 
         # If the edges are given as indices, transform them to their appropriate names
-        u, v = self.convert_indices_to_nodes(u, v)
+        # u, v = self.convert_indices_to_nodes(u, v)
 
         # Remove the edges from the graph
         # Exceptions are checked by the superclass method
-        super(nx.DiGraph, self).remove_edge(u, v)
+        super().remove_edge(u, v)
 
     def invert_edge(self, u, v, weight=None):
         """
@@ -500,6 +504,6 @@ class ExtendedDAG(DAG):
 
         # Removes the edge
         # Exceptions are checked by the superclass method
-        super(nx.DiGraph, self).remove_edge(u, v)
+        super().remove_edge(u, v)
         # Adds the opposite edge back
         super().add_edge(v, u, weight=weight)
