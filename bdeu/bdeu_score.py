@@ -7,8 +7,6 @@ import math
 from itertools import product
 
 import numpy as np
-import pandas
-from pandas import DataFrame
 from scipy.special import gammaln
 
 
@@ -26,10 +24,12 @@ class BDeuScore:
 
     Parameters
     ----------
-    data: str, DataFrame or np.ndarray
-        The data over which the BDeU score will be computed.
-        If given as a Pandas DataFrame, the dataset will be converted internally into a numpy array
-
+    data: np.ndarray
+        The data over which the BDeU score will be computed. This data must be given as a 2D numpy Array where
+        each row represents an instance of the dataset, with each column representing a variable (following
+        the order of nodes)
+    nodes: list[str]
+        List of ordered names of all variables.
     equivalent_sample_size: int, default=10
         Equivalent sample size for the BDeu score computation.
     count_method: {"forloop", "unique", "mask"}, default="unique"
@@ -38,9 +38,6 @@ class BDeuScore:
             * "forloop": Standard for loop
             * "unique": np.unique over the sliced dataset
             * "mask": Masking to segment the dataset into smaller datasets with each parent state combinations
-    nodes: list[str], optional
-        List of ordered names of all variables. If not given, names will be extracted from the data.
-        Must be provided if a numpy array is provided as data.
     """
     # ATTRIBUTES #
 
@@ -61,24 +58,11 @@ class BDeuScore:
     count_method: str
 
     # CONSTRUCTOR AND INITIALIZATION METHODS #
-    def __init__(self, data, equivalent_sample_size=10, count_method="unique", nodes=None):
+    def __init__(self, data, nodes, equivalent_sample_size=10, count_method="unique"):
 
-        # Process the input data and, if necessary, convert it into a numpy array
-        if isinstance(data, np.ndarray):
-            # Numpy
-            self.data = data
-            self._initialize_dictionaries(nodes)
-        elif isinstance(data, str):
-            # Path to a CSV file
-            read_data = pandas.read_csv(data)
-            self.data = read_data.to_numpy(dtype='<U8')
-            self._initialize_dictionaries(read_data.columns.values.tolist())
-        elif isinstance(data, DataFrame):
-            # Dataframe
-            self.data = data.to_numpy(dtype='<U8')
-            self._initialize_dictionaries(data.columns.values.tolist())
-        else:
-            raise TypeError("Data must be provided as a Numpy array or a Pandas dataframe")
+        # Store the input data and initialize the dictionaries
+        self.data = data
+        self._initialize_dictionaries(nodes)
 
         # Store the equivalent sample size
         self.esz = equivalent_sample_size

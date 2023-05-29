@@ -35,34 +35,28 @@ class HillClimbing(BaseAlgorithm):
 
     Parameters
     ----------
-    bayesian_network: BayesianNetwork
-        Original bayesian network, used to measure the structure quality
-    nodes: list
-        List of nodes contained within the data, used to generate the DAG
-    data: DataFrame
-        Dataframe representing the data to be used when building the DAG
+    data: str, DataFrame or ndarray
+        Dataset or location of the dataset from which the DAG will be built. The following can be specified:
+
+        - A path to a .csv file
+        - A DataFrame containing the data and variable names
+        - A numpy Array containing the data
+
+        If a numpy Arry is specified, the variable names MUST be passed as argument.
+    nodes: list[str], optional
+        List of ordered variable names contained within the data.
+        This argument is ignored unless a numpy Array is given as data - in which case, it is mandatory.
+    bayesian_network: BayesianNetwork or str, optional
+        Bayesian Network (or path to the BIF file describing it) used for final measurements (like
+        the log likelihood of the dataset)
     """
 
     # CONSTRUCTOR #
 
-    def __init__(self, bayesian_network, nodes, data):
-        """
-        Prepares all necessary data and structures for Greedy Search.
-
-        `estimate_dag` generates a DAG optimizing the BDeU score for the specified data.
-
-        Parameters
-        ----------
-        bayesian_network: BayesianNetwork
-            Original bayesian network, used to measure the structure quality
-        nodes: list
-            List of nodes contained within the data, used to generate the DAG
-        data: DataFrame
-            Dataframe representing the data to be used when building the DAG
-        """
+    def __init__(self, data, nodes=None, bayesian_network=None):
 
         # Call the super constructor
-        super().__init__(bayesian_network, nodes, data)
+        super().__init__(data, nodes, bayesian_network)
 
     # MAIN METHODS #
 
@@ -318,40 +312,43 @@ class HillClimbing(BaseAlgorithm):
                 print("")
 
         # END OF THE LOOP - DAG FINALIZED
-
-        # Compute the necessary metrics
-
-        # Log likelihood
-        # TODO IF NO ORIGINAL MODEL, USE TRAINING DATA SET
-        # TODO EITHER CONVERT TO BN OR FIND WAY TO DO ON DAG
-
-        # Generate the new data
-        # test_data = BayesianModelSampling(self.bayesian_network).forward_sample(size=test_data_size)
-        # log_likelihood = log_likelihood_score(dag, test_data)
+        # METRICS COMPUTATION
 
         # Average Markov mantle
         average_markov = compute_average_markov_mantle(dag)
 
-        # Average Markov mantle difference
-        average_markov_difference = abs(compute_average_markov_mantle(self.bayesian_network) - average_markov)
+        # The following metrics require an original DAG or Bayesian Network to have been passed
+        if self.bayesian_network is not None:
 
-        # Structural moral hamming distance (SMHD)
-        smhd = compute_smhd(self.bayesian_network, dag)
+            # Average Markov mantle difference
+            average_markov_difference = abs(compute_average_markov_mantle(self.bayesian_network) - average_markov)
+            # Structural moral hamming distance (SMHD)
+            smhd = compute_smhd(self.bayesian_network, dag)
+
+            # Log likelihood
+            # TODO IF NO ORIGINAL MODEL, USE TRAINING DATA SET
+            # TODO EITHER CONVERT TO BN OR FIND WAY TO DO ON DAG
+
+            # Generate the new data
+            # test_data = BayesianModelSampling(self.bayesian_network).forward_sample(size=test_data_size)
+            # log_likelihood = log_likelihood_score(dag, test_data)
 
         # If necessary, print these metrics
         if verbose >= 1:
             print("\n FINAL RESULTS \n\n")
-            print("- Time taken: {}\n".format(time_taken))
+            print("- Time taken: {}s\n".format(time_taken))
 
             print("- Operations performed:")
             print("\t* Additions: {}".format(add_operations))
             print("\t* Removals: {}".format(remove_operations))
             print("\t* Inversions: {}\n".format(invert_operations))
 
-            # print("Log likelihood: {}".format(log_likelihood))
             print("- Average Markov mantle size: {}".format(average_markov))
-            print("- Difference in average Markov mantle sizes: {}".format(average_markov_difference))
-            print("- SMHD: {}".format(smhd))
+
+            if self.bayesian_network is not None:
+                print("- Difference in average Markov mantle sizes: {}".format(average_markov_difference))
+                print("- SMHD: {}".format(smhd))
+                # print("Log likelihood: {}".format(log_likelihood))
 
         if verbose >= 5:
             dag.to_daft().show()
