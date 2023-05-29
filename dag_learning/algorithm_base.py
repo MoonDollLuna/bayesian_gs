@@ -53,6 +53,7 @@ class BaseAlgorithm:
 
     # CONSTRUCTOR #
 
+    # TODO MODIFY TO MAKE NETWORK AND NODES OPTIONAL
     def __init__(self, bayesian_network, nodes, data):
         """
         Prepares all necessary data and structures for a DAG building algorithm.
@@ -70,6 +71,8 @@ class BaseAlgorithm:
         # Store the information
         # TODO MAKE BAYESIAN NETWORK OPTIONAL
         self.bayesian_network = bayesian_network
+        # TODO - MAKE NODES OPTIONAL OR INFERRED FROM THE PATH
+        # (PROCESS PATH HERE?)
         self.nodes = nodes
         self.data = data
 

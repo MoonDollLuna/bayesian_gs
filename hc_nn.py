@@ -14,15 +14,12 @@ from dag_learning import HillClimbing
 # TODO ADD PROPER ARGUMENT PARSING
 
 # Parse an example BN
-BIF = BIFReader("./input/bif/large/hailfinder.bif")
+BIF = BIFReader("./input/bif/small/asia.bif")
 model = BIF.get_model()
 
-# Sample an example amount of data (10000 data)
-data = BayesianModelSampling(model).forward_sample(size=10000)
-
 # Create and launch the model (own)
-hill_climbing = HillClimbing(model, list(model.nodes), data)
-dag = hill_climbing.estimate_dag(verbose=2)
+hill_climbing = HillClimbing(model, list(model.nodes), "./input/csv/small/asia/10000/asia-10000_1.csv")
+dag = hill_climbing.estimate_dag(verbose=6)
 
 # Create and launch the model (PGMPY)
 #time = time.time()
