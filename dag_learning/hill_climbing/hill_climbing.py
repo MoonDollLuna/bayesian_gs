@@ -89,11 +89,12 @@ class HillClimbing(BaseAlgorithm):
         verbose: int, default = 0
             Verbosity of the program, where:
                 - 0: No information is printed
-                - 1: Progress bar for each iteration is printed
-                - 2: Action taken for each step and final results are printed
-                - 3: Intermediate results for each step are printed
-                - 4: Image of the final graph is printed
-                - 5: DAG is directly printed
+                - 1: Final results and iteration numbers are printed
+                - 2: Progress bar for each iteration is printed
+                - 3: Action taken for each step is printed
+                - 4: Intermediate results for each step are printed
+                - 5: Image of the final graph is printed
+                - 6: DAG is directly printed
         logged: bool
             Whether the log file is written to or not
 
@@ -161,7 +162,7 @@ class HillClimbing(BaseAlgorithm):
 
         # Compute the initial BDeU score
         # It is assumed that none of these scores will have been computed before
-        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=(verbose == 0)):
+        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=True):
 
             # Compute the BDeU for each node
             best_bdeu += self.bdeu_scorer.local_score(node, dag.get_parents(node))
@@ -171,7 +172,7 @@ class HillClimbing(BaseAlgorithm):
             total_operations += 1
 
         # If necessary, output the initial BDeU score
-        if verbose >= 3:
+        if verbose >= 4:
             print("Initial BDeU score: {}".format(best_bdeu))
 
         # Run the loop until:
@@ -191,6 +192,10 @@ class HillClimbing(BaseAlgorithm):
             for action, (X, Y) in tqdm(actions,
                                        desc=("= ITERATION {}: ".format(iterations + 1)),
                                        disable=(verbose == 0)):
+
+                # If necessary, print the header
+                if verbose == 1:
+                    print("= ITERATION {}".format(iterations + 1))
 
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
@@ -298,16 +303,16 @@ class HillClimbing(BaseAlgorithm):
             time_taken = time() - initial_time
 
             # Print the required information according to the verbosity level
-            if verbose >= 2:
-                print("- Action taken: {}".format(action_taken))
             if verbose >= 3:
+                print("- Action taken: {}".format(action_taken))
+            if verbose >= 4:
                 print("* Current BDeU: {}".format(current_best_bdeu))
                 print("* BDeU delta: {}".format(bdeu_delta))
                 print("* Computed BDeU checks: {}".format(computed_operations))
                 print("* Total BDeU checks: {}".format(total_operations))
                 print("* Time taken: {}".format(time_taken))
                 print("")
-            if verbose >= 5:
+            if verbose >= 6:
                 print("- Nodes: {}".format(list(dag.nodes)))
                 print("- Edges: {}".format(list(dag.edges)))
                 print("")
@@ -334,7 +339,7 @@ class HillClimbing(BaseAlgorithm):
         smhd = compute_smhd(self.bayesian_network, dag)
 
         # If necessary, print these metrics
-        if verbose >= 2:
+        if verbose >= 1:
             print("\n FINAL RESULTS \n\n")
             print("- Time taken: {}\n".format(time_taken))
 
@@ -348,7 +353,7 @@ class HillClimbing(BaseAlgorithm):
             print("- Difference in average Markov mantle sizes: {}".format(average_markov_difference))
             print("- SMHD: {}".format(smhd))
 
-        if verbose >= 4:
+        if verbose >= 5:
             dag.to_daft().show()
 
         return dag
