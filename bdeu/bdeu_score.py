@@ -1,11 +1,13 @@
 # BAYESIAN NETWORK - NN GS SPEEDUP #
 # Developed by Luna Jimenez Fernandez
 # Based on the work of Wenfeng Zhang et al.
-import math
+
 # IMPORTS #
+import math
 from itertools import product
 
 import numpy as np
+import pandas
 from pandas import DataFrame
 from scipy.special import gammaln
 
@@ -24,10 +26,10 @@ class BDeuScore:
 
     Parameters
     ----------
-    data: DataFrame or np.ndarray
+    data: str, DataFrame or np.ndarray
         The data over which the BDeU score will be computed.
         If given as a Pandas DataFrame, the dataset will be converted internally into a numpy array
-        TODO Add from csv
+
     equivalent_sample_size: int, default=10
         Equivalent sample size for the BDeu score computation.
     count_method: {"forloop", "unique", "mask"}, default="unique"
@@ -63,9 +65,16 @@ class BDeuScore:
 
         # Process the input data and, if necessary, convert it into a numpy array
         if isinstance(data, np.ndarray):
+            # Numpy
             self.data = data
             self._initialize_dictionaries(nodes)
+        elif isinstance(data, str):
+            # Path to a CSV file
+            read_data = pandas.read_csv(data)
+            self.data = read_data.to_numpy(dtype='<U8')
+            self._initialize_dictionaries(read_data.columns.values.tolist())
         elif isinstance(data, DataFrame):
+            # Dataframe
             self.data = data.to_numpy(dtype='<U8')
             self._initialize_dictionaries(data.columns.values.tolist())
         else:

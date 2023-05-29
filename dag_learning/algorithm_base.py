@@ -71,7 +71,6 @@ class BaseAlgorithm:
         # TODO MAKE BAYESIAN NETWORK OPTIONAL
         self.bayesian_network = bayesian_network
         self.nodes = nodes
-        # TODO ALLOW DATA TO BE READ FROM A CSV
         self.data = data
 
         # Initialize the utility classes
