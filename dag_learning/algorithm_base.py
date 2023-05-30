@@ -3,8 +3,9 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS #
+from numpy import ndarray
 from pgmpy.models import BayesianNetwork
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 
 from bdeu import BDeUCache, BDeuScore
 from utils import LogManager
@@ -21,12 +22,20 @@ class BaseAlgorithm:
 
     Parameters
     ----------
-    bayesian_network: BayesianNetwork
-        Original bayesian network, used to measure the structure quality
-    nodes: list
-        List of nodes contained within the data, used to generate the DAG
-    data: DataFrame
-        Dataframe representing the data to be used when building the DAG
+    data: str, DataFrame or ndarray
+        Dataset or location of the dataset from which the DAG will be built. The following can be specified:
+
+        - A path to a .csv file
+        - A DataFrame containing the data and variable names
+        - A numpy Array containing the data
+
+        If a numpy Arry is specified, the variable names MUST be passed as argument.
+    nodes: list[str], optional
+        List of ordered variable names contained within the data.
+        This argument is ignored unless a numpy Array is given as data - in which case, it is mandatory.
+    bayesian_network: BayesianNetwork or str, optional
+        Bayesian Network (or path to the BIF file describing it) used for final measurements (like
+        the log likelihood of the dataset)
     """
 
     # ATTRIBUTES #
@@ -34,12 +43,12 @@ class BaseAlgorithm:
     # Bayesian network data #
     # Data, variables... from the original Bayesian network, used to build the new DAG
 
-    # Original BN (used to compare structure results)
-    bayesian_network: BayesianNetwork
+    # Data from which to generate a DAG
+    data: str or ndarray or DataFrame
     # Nodes contained within the data
     nodes: list
-    # Data from which to generate a DAG
-    data: DataFrame
+    # Original BN (used to compare structure results)
+    bayesian_network: BayesianNetwork
 
     # Data structures #
     # Data structures and utilities to be used during the algorithm execution
@@ -53,29 +62,40 @@ class BaseAlgorithm:
 
     # CONSTRUCTOR #
 
-    def __init__(self, bayesian_network, nodes, data):
-        """
-        Prepares all necessary data and structures for a DAG building algorithm.
+    def __init__(self, data, nodes=None, bayesian_network=None):
 
-        Parameters
-        ----------
-        bayesian_network: BayesianNetwork
-            Original bayesian network, used to measure the structure quality
-        nodes: list
-            List of nodes contained within the data, used to generate the DAG
-        data: DataFrame
-            Dataframe representing the data to be used when building the DAG
-        """
+        # Process the input data and, if necessary, convert it into a numpy array
+        if isinstance(data, ndarray):
+            # Numpy
+            self.data = data
 
-        # Store the information
-        # TODO MAKE BAYESIAN NETWORK OPTIONAL
+            # Nodes MUST be given as an argument
+            if nodes is None:
+                raise ValueError("A list of variable names must be given if a numpy array is passed as argument.")
+            else:
+                self.nodes = nodes
+        elif isinstance(data, (str, DataFrame)):
+            # Path to a CSV file or Pandas DataFrame
+
+            # If a path to a CSV file is given, read the data from it
+            if isinstance(data, str):
+                data = read_csv(data)
+
+            # Convert the data into a numpy array and extract the node names
+            self.data = data.to_numpy(dtype='<U8')
+            self.nodes = data.columns.values.tolist()
+
+        else:
+            raise TypeError("Data must be provided as a CSV file, a Pandas dataframe or a Numpy array.")
+
+        # If a bayesian network is specified, store it for structure checks
         self.bayesian_network = bayesian_network
-        self.nodes = nodes
-        # TODO ALLOW DATA TO BE READ FROM A CSV
-        self.data = data
 
         # Initialize the utility classes
+
+        # BDeu cache and scorer
+        self.bdeu_cache = BDeUCache()
+        self.bdeu_scorer = BDeuScore(self.data, self.nodes)
         # TODO - LOG MANAGER PATH
         self.log_manager = LogManager()
-        self.bdeu_cache = BDeUCache()
-        self.bdeu_scorer = BDeuScore(self.data)
+
