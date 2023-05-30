@@ -16,18 +16,18 @@ from pgmpy.base import DAG
 # OPERATION COMPUTATION #
 
 def find_legal_hillclimbing_operations(dag):
-    # TODO LOOPS
     """
-    Given a DAG and a set of variables, find all legal operations, creating three sets containing:
+    Given a DAG, find all possible operations, those being:
         - All possible edges to add.
         - All possible edges to remove.
         - All possible edges to invert.
 
-    All of these operations are included into a single set, where each element has shape:
+    All of these operations are included into a single list, where each element has shape:
 
         (operation [add, remove, invert], (origin node, destination node))
 
-    This method filters all actions that may lead to illegal DAGs (cycles).
+    This method filters all actions that may lead to illegal DAGs (cycles). This method also returns
+    values as a list to ensure determinism within the algorithm.
 
     Parameters
     ----------
@@ -36,49 +36,88 @@ def find_legal_hillclimbing_operations(dag):
 
     Returns
     -------
-    set
+    list[(str, (str, str))]
     """
 
-    # Get the list of nodes from the DAG
-    nodes = list(dag.nodes())
+    # Get the list of nodes and edges from the DAG
+    nodes = list(dag.nodes)
+    edges = list(dag.edges)
+
+    # Create a set of existing edges, for faster lookup
+    set_edges = set(edges)
 
     # EDGE ADDITIONS #
 
-    # Generate the initial set of possible additions (all possible permutations of nodes)
-    add_edges = set([("add", permutation) for permutation in permutations(nodes, 2)])
-
-    # Remove invalid edge additions
-    # Remove existing edges
-    add_edges = add_edges - set([("add", edge) for edge in list(dag.edges)])
-    # Remove inverted edges that already exist
-    add_edges = add_edges - set([("add", (Y, X)) for (X, Y) in list(dag.edges)])
-    # Remove edges that can lead to a cycle
-    add_edges = add_edges - set([("add", (X, Y)) for (_, (X, Y)) in add_edges if nx.has_path(dag, Y, X)])
+    # Starting with the initial set of possible additions (all possible permutations of nodes of size 2),
+    # filter all additions that:
+    #   - Already exist (directly or reversed)
+    #   - Would cause a loop
+    add_edges = [("add", (X, Y)) for X, Y in permutations(nodes, 2)
+                 if _is_legal_addition(dag, set_edges, X, Y)]
 
     # EDGE REMOVALS #
 
-    # Generate the initial set of possible removals (only the existing edges)
-    remove_edges = set([("remove", edge) for edge in list(dag.edges)])
+    # The list of possible edge removals is the list of already existing edges
+    # All edge removal operations are legal
+    remove_edges = [("remove", edge) for edge in edges]
 
     # EDGE INVERSIONS
 
-    # Generate the initial set of possible removals (only the existing edges)
-    invert_edges = set([("invert", edge) for edge in list(dag.edges)])
+    # The list of possible edge inversions is the list of already existing edges that:
+    #   - If inverted, do not cause a loop
+    invert_edges = [("invert", (X, Y)) for X, Y in edges
+                    if _is_legal_inversion(dag, X, Y)]
 
-    # Remove the edges that, when inverted, would lead to a cycle
-    invert_edges = invert_edges - set([("invert", (X, Y))
-                                       for (_, (X, Y))
-                                       in invert_edges
-                                       if has_path_inversion(dag, X, Y)])
+    # Extend the original list (add edges) to include the rest of lists
+    add_edges.extend(remove_edges)
+    add_edges.extend(invert_edges)
 
-    # Join all sets into a single set
-    return add_edges | remove_edges | invert_edges
+    return add_edges
 
 
-def has_path_inversion(dag, source, target):
+def _is_legal_addition(dag, existing_edges, source, target):
     """
-    Returns True if there is a path in between source and target OTHER THAN the already existing path
-    between source and target.
+    Returns True if the edge between source and target is a legal edge within dag.
+
+    A legal edge is an edge that:
+        - Does not already exist within the dag.
+        - Does not have an equivalent reversed edge within the dag.
+        - Does not create a loop within the dag.
+
+    Parameters
+    ----------
+    dag: DAG
+        Directed Acyclic Graph on which the path is checked
+    existing_edges: set
+        Set of all the existing edges within the DAG
+    source: str
+        Starting node of the path
+    target: str
+        Ending node of the path
+
+    Returns
+    -------
+    bool
+    """
+
+    # Check if the edge (or its reversed edge) already exists
+    # Already existing edges are not legal
+    if (source, target) in existing_edges or (target, source) in existing_edges:
+        return False
+
+    # If the edge does not exist, check if it would create a loop within the DAG
+    # (a loop would be created if there is already a path between target and source)
+    if nx.has_path(dag, target, source):
+        return False
+
+    # If all of these checks are passed, the path is legal
+    return True
+
+
+def _is_legal_inversion(dag, source, target):
+    """
+    Returns True if there is NOT a path in between source and target OTHER THAN the already existing path
+    between source and target, and False otherwise.
 
     This method is used to check for possible loops during inversion in an efficient way. To do this, the
     existing edge between source and target is temporarily removed before calling the (efficient)
@@ -100,7 +139,6 @@ def has_path_inversion(dag, source, target):
 
     # Internally remove the already existing path
     # For sanity checking, we check for exceptions (if the edge does not exist, an exception will be raised)
-
     edge_removed = True
     try:
         dag.remove_edge(source, target)
@@ -114,7 +152,9 @@ def has_path_inversion(dag, source, target):
     if edge_removed:
         dag.add_edge(source, target)
 
-    return path_found
+    # The inversion is legal if the path is not found
+    return not path_found
+
 
 # STATISTIC COMPUTATIONS #
 

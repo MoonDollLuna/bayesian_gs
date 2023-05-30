@@ -9,7 +9,6 @@ the structure of a Bayesian Network from data
 
 from .algorithm_base import BaseAlgorithm
 from .hill_climbing.hill_climbing_utilities import find_legal_hillclimbing_operations, \
-    compute_average_markov_mantle, compute_smhd, \
-    has_path_inversion
+    compute_average_markov_mantle, compute_smhd
 from .hill_climbing.hill_climbing import HillClimbing
 
