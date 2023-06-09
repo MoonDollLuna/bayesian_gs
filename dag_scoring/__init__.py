@@ -6,5 +6,5 @@
 This module contains all classes related to BDeu score computations and storing.
 """
 
-from .bdeu_cache import BDeUCache
+from .score_cache import ScoreCache
 from .bdeu_score import BDeuScore

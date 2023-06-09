@@ -24,30 +24,30 @@ def nodes_to_key(node, parents):
         return node, None
 
 
-class BDeUCache:
+class ScoreCache:
     """
-    Cache storing the BDeU score of all families of node and parents.
+    Cache storing the local score of all families of node and parents.
 
-    A cache is used to store local BDeU scores, in order to speed up the process
+    A cache is used to store local scores, in order to speed up the process
     by avoiding repeat computations
     """
 
     # ATTRIBUTES #
 
-    # Inner dictionary of family -> local BDeU score
+    # Inner dictionary of family -> local score
     # Families (keys) are represented as a tuple (node, (parents))
-    _bdeu_scores: dict
+    _local_scores: dict
 
     # CONSTRUCTOR #
     def __init__(self):
 
         # Initialize the dictionary
-        self._bdeu_scores = {}
+        self._local_scores = {}
 
-    # BDEU RETRIEVAL - INSERTION METHODS
-    def has_bdeu(self, node, parents):
+    # LOCAL SCORE RETRIEVAL - INSERTION METHODS
+    def has_score(self, node, parents):
         """
-        Checks if a local BDeU score has already been computed / is contained within the cache
+        Checks if a local score has already been computed / is contained within the cache
         for the specified family (node and parents)
 
         Parameters
@@ -63,11 +63,11 @@ class BDeUCache:
         """
 
         key = nodes_to_key(node, parents)
-        return key in self._bdeu_scores
+        return key in self._local_scores
 
-    def get_bdeu_score(self, node, parents):
+    def get_local_score(self, node, parents):
         """
-        Gets the local BDeU score of the already existing family within the cache
+        Gets the local score of the already existing family within the cache
 
         Parameters
         ----------
@@ -82,9 +82,9 @@ class BDeUCache:
         """
 
         key = nodes_to_key(node, parents)
-        return self._bdeu_scores[key]
+        return self._local_scores[key]
 
-    def insert_bdeu_score(self, node, parents, score):
+    def insert_local_score(self, node, parents, score):
         """
         Inserts the local BDeU score for a given family within the cache
 
@@ -99,13 +99,13 @@ class BDeUCache:
         """
 
         key = nodes_to_key(node, parents)
-        self._bdeu_scores[key] = score
+        self._local_scores[key] = score
 
     # HELPER METHODS
 
     def wipe_cache(self):
         """
-        Empties the BDeU cache contents.
+        Empties the local score cache contents.
         """
 
-        self._bdeu_scores = {}
+        self._local_scores = {}

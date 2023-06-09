@@ -15,7 +15,6 @@ from pgmpy.sampling import BayesianModelSampling
 
 from time import time
 from tqdm import tqdm
-from pandas import DataFrame
 
 
 class HillClimbing(BaseAlgorithm):
@@ -149,7 +148,7 @@ class HillClimbing(BaseAlgorithm):
 
         # If necessary, wipe out the BDeU cache
         if wipe_cache:
-            self.bdeu_cache.wipe_cache()
+            self.score_cache.wipe_cache()
 
         # MAIN LOOP #
         # TODO ADD LOG
@@ -288,7 +287,7 @@ class HillClimbing(BaseAlgorithm):
                     dag.invert_edge(X, Y)
                     invert_operations += 1
 
-                # Store the best bdeu
+                # Store the best dag_scoring
                 best_bdeu = current_best_bdeu
 
             # Update the metrics
@@ -385,30 +384,30 @@ class HillClimbing(BaseAlgorithm):
 
         # ORIGINAL PARENTS
         # Check if the BDeU score already exists
-        if self.bdeu_cache.has_bdeu(node, original_parents):
+        if self.score_cache.has_score(node, original_parents):
             # BDeU score exists: retrieve it
-            original_bdeu = self.bdeu_cache.get_bdeu_score(node, original_parents)
+            original_bdeu = self.score_cache.get_local_score(node, original_parents)
 
             operations += 1
         else:
             # BDeU score does not exist: compute it
             original_bdeu = self.bdeu_scorer.local_score(node, original_parents)
-            self.bdeu_cache.insert_bdeu_score(node, original_parents, original_bdeu)
+            self.score_cache.insert_local_score(node, original_parents, original_bdeu)
 
             operations += 1
             computed_operations += 1
 
         # NEW PARENTS
         # Check if the BDeU score already exists
-        if self.bdeu_cache.has_bdeu(node, new_parents):
+        if self.score_cache.has_score(node, new_parents):
             # BDeU score exists: retrieve it
-            new_bdeu = self.bdeu_cache.get_bdeu_score(node, new_parents)
+            new_bdeu = self.score_cache.get_local_score(node, new_parents)
 
             operations += 1
         else:
             # BDeU score does not exist: compute it
             new_bdeu = self.bdeu_scorer.local_score(node, new_parents)
-            self.bdeu_cache.insert_bdeu_score(node, new_parents, new_bdeu)
+            self.score_cache.insert_local_score(node, new_parents, new_bdeu)
 
             operations += 1
             computed_operations += 1

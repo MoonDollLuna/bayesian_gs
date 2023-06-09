@@ -362,8 +362,6 @@ class BDeuScore:
         -------
         list[np.ndarray]
             List of all masks to apply to the data
-
-        TODO MOVE INTO STATE COUNTS METHOD TO AVOID DUPLICATE LOOPS
         """
 
         # Create a list to store all possible masks

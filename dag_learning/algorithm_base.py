@@ -7,7 +7,7 @@ from numpy import ndarray
 from pgmpy.models import BayesianNetwork
 from pandas import DataFrame, read_csv
 
-from bdeu import BDeUCache, BDeuScore
+from dag_scoring import ScoreCache, BDeuScore
 from utils import LogManager
 
 
@@ -55,8 +55,8 @@ class BaseAlgorithm:
 
     # Log manager
     log_manager: LogManager
-    # BDeU cache
-    bdeu_cache: BDeUCache
+    # Local score cache
+    score_cache: ScoreCache
     # BDeU scorer
     bdeu_scorer: BDeuScore
 
@@ -93,8 +93,8 @@ class BaseAlgorithm:
 
         # Initialize the utility classes
 
-        # BDeu cache and scorer
-        self.bdeu_cache = BDeUCache()
+        # Local score cache and BDeu scorer
+        self.score_cache = ScoreCache()
         self.bdeu_scorer = BDeuScore(self.data, self.nodes)
         # TODO - LOG MANAGER PATH
         self.log_manager = LogManager()
