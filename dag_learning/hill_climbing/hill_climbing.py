@@ -353,7 +353,14 @@ class HillClimbing(BaseAlgorithm):
         if verbose >= 5:
             dag.to_daft().show()
 
+        # TODO NEW STATISTICS:
+        # - SMHD for an empty DAG
+        # - value improvement and % improvement of SMHD from empty dag to current DAG
+        # - log likelihood?
+
         return dag
+
+
 
     # HELPER METHODS #
 
