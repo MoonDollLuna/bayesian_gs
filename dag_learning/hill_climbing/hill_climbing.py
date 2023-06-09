@@ -333,6 +333,7 @@ class HillClimbing(BaseAlgorithm):
             # log_likelihood = log_likelihood_score(dag, test_data)
 
         # If necessary, print these metrics
+        # TODO MOVE TO SEPARATE METHOD
         if verbose >= 1:
             print("\n FINAL RESULTS \n\n")
             print("- Time taken: {}s\n".format(time_taken))

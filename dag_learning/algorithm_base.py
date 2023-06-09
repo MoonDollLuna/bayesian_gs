@@ -8,7 +8,7 @@ from pgmpy.models import BayesianNetwork
 from pandas import DataFrame, read_csv
 
 from dag_scoring import ScoreCache, BDeuScore
-from utils import LogManager
+from utils import ResultsLogger
 
 
 class BaseAlgorithm:
@@ -29,7 +29,7 @@ class BaseAlgorithm:
         - A DataFrame containing the data and variable names
         - A numpy Array containing the data
 
-        If a numpy Arry is specified, the variable names MUST be passed as argument.
+        If a numpy array is specified, the variable names MUST be passed as argument.
     nodes: list[str], optional
         List of ordered variable names contained within the data.
         This argument is ignored unless a numpy Array is given as data - in which case, it is mandatory.
@@ -54,7 +54,7 @@ class BaseAlgorithm:
     # Data structures and utilities to be used during the algorithm execution
 
     # Log manager
-    log_manager: LogManager
+    log_manager: ResultsLogger
     # Local score cache
     score_cache: ScoreCache
     # BDeU scorer
@@ -97,5 +97,5 @@ class BaseAlgorithm:
         self.score_cache = ScoreCache()
         self.bdeu_scorer = BDeuScore(self.data, self.nodes)
         # TODO - LOG MANAGER PATH
-        self.log_manager = LogManager()
+        self.log_manager = ResultsLogger()
 

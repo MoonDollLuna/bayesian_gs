@@ -7,4 +7,4 @@ This module contains utility classes related to the storing and interpreting of 
 of the experiments.
 """
 
-from .log_manager import LogManager
+from .results_logger import ResultsLogger
