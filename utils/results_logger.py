@@ -119,11 +119,12 @@ class ResultsLogger:
 
     def write_data_row(self, data):
         """
-        Writes a data row according to CSV standards
+        Writes a data row according to CSV standards and, if enough time has passed
+        (as specified in the constructor), flushes the file
 
-        This can be either:
+        This row can be either:
         - Column headers
-        - Value of a row
+        - Value of an iteration
 
         Parameters
         ----------
@@ -131,4 +132,14 @@ class ResultsLogger:
             List of data to write
         """
 
+        # Write the row of data
         self._csv_writer.writerow(data)
+
+        # Check the time that has passed and, if necessary, flush the file
+        if time.time() - self._last_update_time > self._flush_frequency:
+
+            # Flush the file
+            self._file.flush()
+
+            # Update the timer
+            self._last_update_time = time.time()
