@@ -9,7 +9,7 @@ import csv
 
 import time
 
-from typing import IO
+from typing import IO, Any
 
 
 class ResultsLogger:
@@ -36,7 +36,7 @@ class ResultsLogger:
 
     # Handle of the internal file and CSV writer
     _file: IO
-    _csv_writer: IO
+    _csv_writer: Any
 
     # File name and file path
     _file_name: str
@@ -90,17 +90,45 @@ class ResultsLogger:
         self._csv_writer = csv.writer(self._file, delimiter=",")
 
     def close_results_file(self):
-        raise NotImplementedError
+        """
+        Closes both file handles orderly to release system resources
+        """
+
+        self._csv_writer.close()
+        self._file.close()
 
     # LOG MANAGEMENT
-    def write_empty_line(self):
-        raise NotImplementedError
+    # NOTE - Since headers and final results do not have constant formats (since the data shown might depend on the
+    # specified parameters), both header and results should be printed using comments.
 
-    def write_header(self):
-        raise NotImplementedError
+    def write_line(self, line):
+        """
+        Directly writes a line into the file by bypassing the CSV writer.
 
-    def write_column_titles(self):
-        raise NotImplementedError
+        Can be used to:
+        - Write comments (by starting the line with #)
+        - Write empty lines (by passing "\n" as a line)
 
-    def write_data(self):
-        raise NotImplementedError
+        Parameters
+        ----------
+        line: str
+            Line to write into the file
+        """
+
+        self._file.write(line)
+
+    def write_data_row(self, data):
+        """
+        Writes a data row according to CSV standards
+
+        This can be either:
+        - Column headers
+        - Value of a row
+
+        Parameters
+        ----------
+        data: list
+            List of data to write
+        """
+
+        self._csv_writer.writerow(data)
