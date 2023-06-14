@@ -39,16 +39,16 @@ class ResultsLogger:
     _csv_writer: Any
 
     # File name and file path
-    _file_name: str
-    _file_path: str
+    file_name: str
+    file_path: str
 
     # FILE FLUSHING
 
     # Time of creation / last flush
-    _last_update_time: float
+    last_update_time: float
 
     # Frequency of flushing (in seconds)
-    _flush_frequency: int
+    flush_frequency: int
 
     # CONSTRUCTOR #
     def __init__(self, results_path, input_name, flush_frequency):
@@ -70,8 +70,6 @@ class ResultsLogger:
         # Create the file and store the handles
         self._create_results_file(self._file_path)
 
-    # TODO FINISH METHODS
-
     # FILE AND PATH MANAGEMENT
     def _create_results_file(self, file_path):
         """
@@ -82,7 +80,6 @@ class ResultsLogger:
         file_path: str
             Path of the results file
         """
-
         # Open the file in write-only mode
         self._file = open(file_path, "wt", newline="")
 

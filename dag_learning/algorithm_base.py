@@ -79,7 +79,7 @@ class BaseAlgorithm:
     # BDeU scorer
     bdeu_scorer: BDeuScore
     # Log manager
-    log_manager: Optional[ResultsLogger]
+    results_logger: Optional[ResultsLogger]
 
     # CONSTRUCTOR #
 
@@ -128,7 +128,7 @@ class BaseAlgorithm:
 
         # If required, create the Results Logger
         if results_path:
-            self.log_manager = ResultsLogger(results_path, input_file_name, flush_frequency)
+            self.results_logger = ResultsLogger(results_path, input_file_name, flush_frequency)
         else:
-            self.log_manager = None
+            self.results_logger = None
 

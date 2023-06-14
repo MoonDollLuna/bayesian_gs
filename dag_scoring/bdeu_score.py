@@ -138,6 +138,8 @@ class BDeuScore:
             state_counts = self.get_state_counts_for(variable, variable_states, parents, parent_state_combinations)
         elif self.count_method == "mask":
             state_counts = self.get_state_counts_mask(variable, variable_states, parents, parent_state_combinations)
+        else:
+            raise ValueError("A valid counts method must be specified.")
 
         # BDEU CALCULATION #
 

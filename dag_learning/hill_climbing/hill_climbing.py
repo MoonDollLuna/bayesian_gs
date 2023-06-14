@@ -14,6 +14,7 @@ from pgmpy.metrics import log_likelihood_score
 from pgmpy.sampling import BayesianModelSampling
 
 from time import time
+import datetime
 from tqdm import tqdm
 
 
@@ -41,30 +42,52 @@ class HillClimbing(BaseAlgorithm):
         - A DataFrame containing the data and variable names
         - A numpy Array containing the data
 
-        If a numpy Arry is specified, the variable names MUST be passed as argument.
+        If a numpy array is specified, the variable names MUST be passed as argument.
     nodes: list[str], optional
         List of ordered variable names contained within the data.
         This argument is ignored unless a numpy Array is given as data - in which case, it is mandatory.
     bayesian_network: BayesianNetwork or str, optional
         Bayesian Network (or path to the BIF file describing it) used for final measurements (like
         the log likelihood of the dataset)
+    equivalent_sample_size: int, default=10
+        Equivalent sample size used to compute BDeu scores.
+    bdeu_score_method: {"forloop", "unique", "mask"}, default="unique"
+        Method used to count state frequencies. Possible values:
+
+            * "unique": np.unique over the sliced dataset
+            * "forloop": Standard for loop
+            * "mask": Masking to segment the dataset into smaller datasets with each parent state combinations
+
+        "unique" should be used, other methods are kept for compatibility’s sake.
+    results_path: str, optional
+        Path to store the results logger file. If not specified, no logging will be done.
+    input_file_name: str, optional
+        Filename of the input data. Only used if data is not specified as a CSV and if results_path is not None.
+    flush_frequency: int, default=300
+        Time (in seconds) between results logger flushes / how often the file is written to.
     """
 
     # CONSTRUCTOR #
 
-    def __init__(self, data, nodes=None, bayesian_network=None):
+    def __init__(self, data, nodes=None, bayesian_network=None,
+                 equivalent_sample_size=10, bdeu_score_method="unique",
+                 results_path=None, input_file_name=None, flush_frequency=300):
 
         # Call the super constructor
-        super().__init__(data, nodes, bayesian_network)
+        super().__init__(data, nodes, bayesian_network,
+                         equivalent_sample_size, bdeu_score_method,
+                         results_path, input_file_name, flush_frequency)
 
     # MAIN METHODS #
 
-    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6, test_data_size=10000,
-                     wipe_cache=False, verbose=0, logged=True):
+    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
+                     wipe_cache=False, verbose=0):
         """
         Performs Hill Climbing to find a local best DAG based on BDeU.
 
         Note that the found DAG may not be optimal, but good enough.
+
+        If specified in the constructor, a log file is also created.
 
         Parameters
         ----------
@@ -75,8 +98,6 @@ class HillClimbing(BaseAlgorithm):
             the algorithm stops
         max_iterations: int
             Maximum number of iterations to perform.
-        test_data_size: int
-            Amount of data to generate when testing the log likelihood
         wipe_cache: bool
             Whether the BDeU cache should be wiped or not
         verbose: int, default = 0
@@ -88,8 +109,6 @@ class HillClimbing(BaseAlgorithm):
                 - 4: Intermediate results for each step are printed
                 - 5: Image of the final graph is printed
                 - 6: DAG is directly printed
-        logged: bool
-            Whether the log file is written to or not
 
         Returns
         -------
@@ -98,7 +117,10 @@ class HillClimbing(BaseAlgorithm):
 
         # LOCAL VARIABLE DECLARATION #
 
-        # Log handling variables #
+        #################################################
+        # Metrics used to evaluate the learning process #
+        #################################################
+
         # Iterations performed
         iterations: int = 0
 
@@ -122,7 +144,9 @@ class HillClimbing(BaseAlgorithm):
         # Delta BDeU (change per iteration)
         bdeu_delta: float = math.inf
 
+        ##############################################
         # Metrics used to evaluate the resulting DAG #
+        ##############################################
 
         # Original-model free metrics
 
@@ -151,11 +175,15 @@ class HillClimbing(BaseAlgorithm):
             self.score_cache.wipe_cache()
 
         # MAIN LOOP #
-        # TODO ADD LOG
+
+        # If results logging is used, write the initial header and the first column names
+        if self.results_logger:
+            self._write_header(initial_time)
+
 
         # Compute the initial BDeU score
         # It is assumed that none of these scores will have been computed before
-        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=True):
+        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=(verbose < 4)):
 
             # Compute the BDeU for each node
             best_bdeu += self.bdeu_scorer.local_score(node, dag.get_parents(node))
@@ -184,7 +212,7 @@ class HillClimbing(BaseAlgorithm):
             # Loop through all actions (using TQDM)
             for action, (X, Y) in tqdm(actions,
                                        desc=("= ITERATION {}: ".format(iterations + 1)),
-                                       disable=(verbose == 0)):
+                                       disable=(verbose < 2)):
 
                 # If necessary, print the header
                 if verbose == 1:
@@ -358,11 +386,11 @@ class HillClimbing(BaseAlgorithm):
         # - value improvement and % improvement of SMHD from empty dag to current DAG
         # - log likelihood?
 
+        # TODO STORE DAG TOO
+
         return dag
 
-
-
-    # HELPER METHODS #
+    # AUXILIARY METHODS #
 
     def _compute_bdeu_delta(self, node, original_parents, new_parents):
         """
@@ -424,3 +452,52 @@ class HillClimbing(BaseAlgorithm):
         bdeu_delta = new_bdeu - original_bdeu
 
         return bdeu_delta, operations, computed_operations
+
+    # LOGGING METHODS #
+
+    def _write_header(self, timestamp):
+        """
+        Writes the header of the log file. The header is a list of comments (started with the # character)
+        that specifies:
+
+            - Algorithm used (HillClimbing) and hyperparameters
+            - The time of the experiment (in timestamp)
+            - The time of the experiment (in date format)
+
+        Parameters
+        ----------
+        timestamp: float
+            Timestamp of the experiment start
+        """
+
+        self.results_logger.write_line("########################################\n")
+
+        # Write the experiment info (hyperparameters)
+        self.results_logger.write_line("# EXPERIMENT ###########################\n\n")
+        self.results_logger.write_line("# * Algorithm used: HillClimbing\n")
+        self.results_logger.write_line("#\t - Score method used: BDeu\n")
+        self.results_logger.write_line("#\t - Frequency counting methodology: {}\n".format(self.bdeu_scorer.count_method))
+        self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.bdeu_scorer.esz))
+
+        # Write the dataset info
+        self.results_logger.write_line("# * Dataset used: {}\n\n".format(self.results_logger.file_name))
+
+        # Write the timestamps
+        self.results_logger.write_line("# * Timestamp: {}\n".format(timestamp))
+        self.results_logger.write_line("# * Date: {}\n\n".format(datetime.datetime.fromtimestamp(timestamp)))
+
+        # Write the final indication
+        self.results_logger.write_line("# Iterations are found below\n")
+        self.results_logger.write_line("########################################\n\n")
+
+    def _write_column_names(self):
+        """
+        TODO FINISH
+        Write the appropriate column names for the header, those being:
+
+            - Iteration,
+            -
+        Returns
+        -------
+
+        """
