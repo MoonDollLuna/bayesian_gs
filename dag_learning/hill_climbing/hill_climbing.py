@@ -363,7 +363,7 @@ class HillClimbing(BaseAlgorithm):
         # Average Markov mantle
         average_markov = compute_average_markov_mantle(dag)
 
-        # The following metrics require an original DAG or Bayesian Network to have been passed
+        # The following metrics require an original DAG or Bayesian Network as an argument
         if self.bayesian_network is not None:
 
             # Average Markov mantle difference
@@ -380,15 +380,15 @@ class HillClimbing(BaseAlgorithm):
             # log_likelihood = log_likelihood_score(dag, test_data)
 
         # If necessary, print these metrics
-        # TODO MOVE TO SEPARATE METHOD
+        # TODO REPLACE BY METHOD
         if verbose >= 1:
             print("\n FINAL RESULTS \n\n")
             print("- Time taken: {}s\n".format(time_taken))
 
             print("- Operations performed:")
-            print("\t* Additions: {}".format(add_operations))
-            print("\t* Removals: {}".format(remove_operations))
-            print("\t* Inversions: {}\n".format(invert_operations))
+            print("\t * Additions: {}".format(add_operations))
+            print("\t * Removals: {}".format(remove_operations))
+            print("\t * Inversions: {}\n".format(invert_operations))
 
             print("- Average Markov mantle size: {}".format(average_markov))
 
@@ -603,3 +603,113 @@ class HillClimbing(BaseAlgorithm):
             print("")
 
         # Verbosity 6 checks (DAG nodes and edges) is purely for debug and is printed outside of this method
+
+    def _write_final_results(self, verbose, score, empty_score, score_improvement, score_improvement_percent,
+                             total_operations, add_operations, remove_operations, invert_operations,
+                             computed_scores, total_scores, time_taken,
+                             markov, original_markov=None, markov_difference=None, markov_difference_percent=None,
+                             smhd=None, empty_smhd=None, smhd_difference=None, smhd_difference_percent=None):
+        """
+        Write the final experiment results, if applicable, into the results logger.
+
+        If the verbosity is appropriate, the data is also printed as a console output.
+
+        Note that some arguments are optional (since some statistics require a Bayesian Network to be computed)
+
+        Parameters
+        ----------
+        verbose: int
+            Verbosity of the program, as specified in "estimate_dag"
+        score: float
+            Total score of the final DAG
+        empty_score: float
+            Total score of an empty DAG
+        score_improvement: float
+            Score improvement between the final DAG and an empty DAG
+        score_improvement_percent: float
+            Score improvement (in percentage) between the final DAG and an empty DAG
+        total_operations: int
+            Total operations performed by the algorithm
+        add_operations: int
+            Total addition operations performed by the algorithm
+        remove_operations: int
+            Total removal operations performed by the algorithm
+        invert_operations: int
+            Total inversion operations performed by the algorithm
+        computed_scores: int
+            Total computed scores (without cache lookups)
+        total_scores: int
+            Total scores checked (including cache lookups)
+        time_taken: float
+            Time taken (in seconds) to perform the algorithm
+        markov: float
+            Average Markov mantle size of the final DAG
+        original_markov: float, optional
+            Average Markov mantle size of the original DAG
+        markov_difference: float, optional
+            Difference in Markov mantle sizes between the final and the original DAG
+        markov_difference_percent: float, optional
+            Difference (in percentage) in Markov mantle sizes between the final and the original DAG
+        smhd: int, optional
+            Structural moralized Hamming distance between the final DAG and the original DAG
+        empty_smhd: int, optional
+            Structural moralized Hamming distance between an empty DAG and the original DAG
+        smhd_difference: int, optional
+            Difference in SMHD between the final DAG and an empty DAG
+        smhd_difference_percent: int, optional
+            Difference (in percentage) in SMHD between the final DAG and an empty DAG
+        """
+
+        # If a results logger exists, print the iteration data
+        if self.results_logger:
+            self.results_logger.write_line("########################################\n")
+            self.results_logger.write_line("# FINAL RESULTS \n\n")
+
+            self.results_logger.write_line("# - Final score: {}\n".format(score))
+            self.results_logger.write_line("#\t * Score of an empty graph: {}\n".format(empty_score))
+            self.results_logger.write_line("#\t * Score improvement: {}\n".format(score_improvement))
+            self.results_logger.write_line("#\t * Score improvement (%): {}%\n\n".format(score_improvement_percent))
+
+            self.results_logger.write_line("# - Time taken: {} secs\n\n".format(time_taken))
+
+            self.results_logger.write_line("# - Total operations performed: {}\n".format(total_operations))
+            self.results_logger.write_line("#\t * Additions: {}\n".format(add_operations))
+            self.results_logger.write_line("#\t * Removals: {}\n".format(remove_operations))
+            self.results_logger.write_line("#\t * Inversions: {}\n\n".format(invert_operations))
+
+            self.results_logger.write_line("# - Computed scores: {}\n".format(computed_scores))
+            self.results_logger.write_line("# - Total scores (including cache lookups): {}\n\n".format(total_scores))
+
+            self.results_logger.write_line("# - Average Markov mantle size: {}\n".format(markov))
+
+            # If a bayesian network exists, also write additional results
+            if self.bayesian_network:
+                self.results_logger.write_line(
+                    "#\t * Original average Mankov mantle size: {}\n".format(original_markov))
+                self.results_logger.write_line("#\t * Markov difference: {}\n".format(markov_difference))
+                self.results_logger.write_line("#\t * Markov difference (%): {}%\n\n".format(markov_difference_percent))
+
+                self.results_logger.write_line("# - SMHD: {}\n".format(smhd))
+                self.results_logger.write_line("#\t * Empty graph SMHD: {}\n".format(empty_smhd))
+                self.results_logger.write_line("#\t * SMHD difference: {}\n".format(smhd_difference))
+                self.results_logger.write_line("#\t * SMHD difference (%): {}%\n".format(smhd_difference_percent))
+
+            self.results_logger.write_line("\n")
+            self.results_logger.write_line("########################################\n")
+
+        # TODO Print results in console
+        if verbose >= 1:
+            print("\n FINAL RESULTS \n\n")
+            print("- Time taken: {}s\n".format(time_taken))
+
+            print("- Operations performed:")
+            print("\t * Additions: {}".format(add_operations))
+            print("\t * Removals: {}".format(remove_operations))
+            print("\t * Inversions: {}\n".format(invert_operations))
+
+            print("- Average Markov mantle size: {}".format(average_markov))
+
+            if self.bayesian_network is not None:
+                print("- Difference in average Markov mantle sizes: {}".format(average_markov_difference))
+                print("- SMHD: {}".format(smhd))
+                # print("Log likelihood: {}".format(log_likelihood))
