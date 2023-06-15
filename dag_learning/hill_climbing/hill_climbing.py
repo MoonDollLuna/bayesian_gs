@@ -144,20 +144,6 @@ class HillClimbing(BaseAlgorithm):
         # Metrics used to evaluate the resulting DAG #
         ##############################################
 
-        # Original-model free metrics
-
-        # Log likelihood - How likely the resulting DAG is given a series of data
-        log_likelihood: float = 0
-        # Average markov mantle
-        average_markov: float = 0
-
-        # Metrics that require an existing Bayesian network
-
-        # Structural moral hamming distance (SMHD)
-        smhd: int = 0
-        # Difference between the original and the resulting Markov mantle
-        average_markov_difference: float = 0
-
         # PARAMETER INITIALIZATION #
 
         # Store the DAG and, if necessary, create an empty one with the existing nodes
@@ -401,8 +387,7 @@ class HillClimbing(BaseAlgorithm):
         if verbose >= 5:
             dag.to_daft().show()
 
-        # TODO STORE DAG TOO
-
+        # TODO STORE DAG
         return dag
 
     # AUXILIARY METHODS #
