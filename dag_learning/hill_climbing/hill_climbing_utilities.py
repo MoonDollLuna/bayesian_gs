@@ -174,7 +174,7 @@ def compute_average_markov_mantle(dag):
     """
 
     # Get the list of nodes
-    nodes = list(dag)
+    nodes = list(dag.nodes)
 
     # Get the total mantle size for all nodes
     total_mantle_size = sum([len(dag.get_markov_blanket(x)) for x in nodes])
@@ -215,3 +215,20 @@ def compute_smhd(original_dag, obtained_dag):
     symmetric_difference = original_dag_edges ^ obtained_dag_edges
 
     return len(symmetric_difference)
+
+
+def compute_percentage_difference(original_score, new_score):
+    """
+    Given two values, computes the percentage difference between both values.
+
+    Parameters
+    ----------
+    original_score: float
+    new_score: float
+
+    Returns
+    -------
+    float
+    """
+
+    return ((new_score - original_score) / abs(original_score)) * 100
