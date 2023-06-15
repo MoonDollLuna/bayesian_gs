@@ -176,10 +176,10 @@ class HillClimbing(BaseAlgorithm):
 
         # MAIN LOOP #
 
-        # If results logging is used, write the initial header and the first column names
+        # If results logging is used, write the initial header and the column names
         if self.results_logger:
             self._write_header(initial_time)
-
+            self._write_column_names()
 
         # Compute the initial BDeU score
         # It is assumed that none of these scores will have been computed before
@@ -191,6 +191,12 @@ class HillClimbing(BaseAlgorithm):
             # Update the metrics
             computed_operations += 1
             total_operations += 1
+
+        # Log the initial iteration (iteration 0) - this data should not be printed on screen
+        initial_time_taken = time() - initial_time
+        self._write_iteration_data(0, iterations, "None", "None", "None",
+                                   best_bdeu, best_bdeu, computed_operations, computed_operations,
+                                   total_operations, total_operations, initial_time_taken, initial_time_taken)
 
         # If necessary, output the initial BDeU score
         if verbose >= 4:
@@ -205,6 +211,10 @@ class HillClimbing(BaseAlgorithm):
             bdeu_delta = 0
             current_best_bdeu = best_bdeu
             action_taken = None
+
+            # Create delta variables to store change in values
+            computed_operations_delta = 0
+            total_operations_delta = 0
 
             # Compute all possible actions for the current DAG
             actions = find_legal_hillclimbing_operations(dag)
@@ -229,7 +239,10 @@ class HillClimbing(BaseAlgorithm):
                     # Compute the BDeU delta and the possible new BDeU score
                     current_bdeu_delta, local_total_operations, local_operations_computed = \
                         self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
+
                     current_bdeu = best_bdeu + current_bdeu_delta
+                    computed_operations_delta = local_operations_computed
+                    total_operations_delta = local_total_operations
 
                     # Update the metrics
                     total_operations += local_total_operations
@@ -252,7 +265,10 @@ class HillClimbing(BaseAlgorithm):
                     # Compute the BDeU delta and the possible new BDeU score
                     current_bdeu_delta, local_total_operations, local_operations_computed = \
                         self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
+
                     current_bdeu = best_bdeu + current_bdeu_delta
+                    computed_operations_delta = local_operations_computed
+                    total_operations_delta = local_total_operations
 
                     # Update the metrics
                     total_operations += local_total_operations
@@ -285,6 +301,8 @@ class HillClimbing(BaseAlgorithm):
 
                     current_bdeu_delta = current_x_bdeu_delta + current_y_bdeu_delta
                     current_bdeu = best_bdeu + current_bdeu_delta
+                    computed_operations_delta = local_x_operations_computed + local_y_operations_computed
+                    total_operations_delta = local_total_x_operations + local_total_y_operations
 
                     # Update the metrics
                     total_operations += local_total_x_operations + local_total_y_operations
@@ -321,18 +339,19 @@ class HillClimbing(BaseAlgorithm):
             # Update the metrics
 
             iterations += 1
-            time_taken = time() - initial_time
 
-            # Print the required information according to the verbosity level
-            if verbose >= 3:
-                print("- Action taken: {}".format(action_taken))
-            if verbose >= 4:
-                print("* Current BDeU: {}".format(current_best_bdeu))
-                print("* BDeU delta: {}".format(bdeu_delta))
-                print("* Computed BDeU checks: {}".format(computed_operations))
-                print("* Total BDeU checks: {}".format(total_operations))
-                print("* Time taken: {}".format(time_taken))
-                print("")
+            new_time_taken = time()
+            time_taken_delta = new_time_taken - time_taken
+            time_taken = new_time_taken - initial_time
+
+            action_str, (origin, destination) = action_taken
+
+            # Print and log the required information as applicable
+            self._write_iteration_data(verbose, iterations, action_str, origin, destination,
+                                       best_bdeu, bdeu_delta, computed_operations, computed_operations_delta,
+                                       total_operations, total_operations_delta, time_taken, time_taken_delta)
+
+            # If necessary (debugging purposes), print the full list of nodes and edges
             if verbose >= 6:
                 print("- Nodes: {}".format(list(dag.nodes)))
                 print("- Edges: {}".format(list(dag.edges)))
@@ -492,12 +511,95 @@ class HillClimbing(BaseAlgorithm):
 
     def _write_column_names(self):
         """
-        TODO FINISH
         Write the appropriate column names for the header, those being:
 
-            - Iteration,
-            -
-        Returns
-        -------
-
+            - Iteration
+            - Action performed (addition, removal, inversion)
+            - Origin node
+            - Destination node
+            - BDeu (total)
+            - BDeu (delta)
+            - Newly computed operations (total)
+            - Newly computed operations (delta)
+            - Total operations (total)
+            - Total operations (delta)
+            - Time taken (total)
+            - Time taken (delta)
         """
+
+        # Prepare the list
+        headers = ["iteration", "action", "origin", "destination",
+                   "bdeu", "bdeu_delta",
+                   "comp_operations", "comp_operations_delta",
+                   "total_operations", "total_operations_delta",
+                   "time_taken", "time_taken_delta"]
+
+        self.results_logger.write_data_row(headers)
+
+    def _write_iteration_data(self, verbose, iteration, action_performed, origin, destination,
+                              score, score_delta, comp_operations, comp_operations_delta,
+                              total_operations, total_operations_delta, time_taken, time_taken_delta):
+        """
+        Writes the iteration data, if applicable, into the results logger.
+
+        If the verbosity is appropriate, the data is also printed as a console output.
+
+        Parameters
+        ----------
+        verbose: int
+            Verbosity of the program, as specified in "estimate_dag"
+        iteration: int
+            Current iteration of the algorithm
+        action_performed: {"add", "remove", "invert"}
+            Action chosen by the algorithm for the iteration
+        origin: str
+            Node of origin for the action
+        destination: str
+            Node of destination for the action
+        score: float
+            Total score after the iteration.
+        score_delta: float
+            Change in total score after the iteration.
+        comp_operations: int
+            Total computed operations (operations that needed to compute a new BDeu score) after the iteration
+        comp_operations_delta: int
+            Difference in computed operations after the iteration
+        total_operations: int
+            Total operations (including BDeu lookups in the cache) after the iteration.
+        total_operations_delta: int
+            Difference in total operations after the iteration.
+        time_taken: float
+            Total time taken (in secs) after the iteration.
+        time_taken_delta: float
+            Time taken by the iteration.
+        """
+
+        # If a results logger exists, print the iteration data
+        if self.results_logger:
+            it_data = [iteration, action_performed, origin, destination,
+                       score, score_delta, comp_operations, comp_operations_delta,
+                       total_operations, total_operations_delta, time_taken, time_taken_delta]
+            self.results_logger.write_data_row(it_data)
+
+        # Depending on the verbosity level, print the information on the console
+
+        # Verbosity 3: Action chosen
+        if verbose >= 3:
+            print("- Action taken: {}".format(action_performed))
+            print("\t * Origin node: {}".format(origin))
+            print("\t * Destination node: {}".format(destination))
+            print("")
+
+        # Verbosity 4: Iteration values
+        if verbose >= 4:
+            print("- Current score: {}".format(score))
+            print("\t * Score delta: {}".format(score_delta))
+            print("- Computed score checks: {}".format(comp_operations))
+            print("\t * Computed score checks delta: {}".format(comp_operations_delta))
+            print("- Total score checks: {}".format(total_operations))
+            print("\t * Total score checks delta: {}".format(total_operations_delta))
+            print("- Total time taken: {} secs".format(time_taken))
+            print("\t * Time taken in this iteration: {} secs".format(time_taken_delta))
+            print("")
+
+        # Verbosity 6 checks (DAG nodes and edges) is purely for debug and is printed outside of this method
