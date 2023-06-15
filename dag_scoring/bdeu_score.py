@@ -8,6 +8,7 @@ from itertools import product
 
 import numpy as np
 from scipy.special import gammaln
+from pgmpy.base import DAG
 
 
 class BDeuScore:
@@ -193,6 +194,34 @@ class BDeuScore:
 
         # UNIQUE STATE COUNT #
 
+    def global_score(self, dag):
+        """
+        Computes the global BDeu score of the specified DAG.
+
+        The global score of a DAG is the sum of local scores for each variable and its parents.
+
+        Parameters
+        ----------
+        dag: DAG
+            A directed acyclic graph
+
+        Returns
+        -------
+        float
+            Global BDeu score
+        """
+
+        score = 0.0
+
+        # For each variable, find its parents and compute the local score
+        for variable in list(dag.nodes):
+            parents = dag.get_parents(variable)
+            score += self.local_score(variable, parents)
+
+        return score
+
+    # COUNT FUNCTIONS #
+
     def get_state_counts_unique(self, variable, variable_states, parents, parent_state_combinations):
         """
         For each combination of parent states, returns the count of each variable state.
@@ -250,7 +279,6 @@ class BDeuScore:
 
         return counts_array
 
-    # FOR STATE COUNT #
     def get_state_counts_for(self, variable, variable_states, parents, parent_state_combinations):
         """
         For each combination of parent states, returns the count of each variable state.
@@ -297,8 +325,6 @@ class BDeuScore:
             counts_array[variable_states_dict[state], parent_states_dict[parent_states]] += 1
 
         return counts_array
-
-    # MASK STATE COUNT #
 
     def get_state_counts_mask(self, variable, variable_states, parents, parent_state_combinations):
         """
