@@ -28,51 +28,7 @@ class HillClimbing(BaseAlgorithm):
     Bayesian Network based on the existing nodes and data is provided.
 
     This algorithm serves as a baseline, to which all other algorithms implemented will be compared to.
-
-    Parameters
-    ----------
-    data: str, DataFrame or ndarray
-        Dataset or location of the dataset from which the DAG will be built. The following can be specified:
-
-        - A path to a .csv file
-        - A DataFrame containing the data and variable names
-        - A numpy Array containing the data
-
-        If a numpy array is specified, the variable names MUST be passed as argument.
-    nodes: list[str], optional
-        List of ordered variable names contained within the data.
-        This argument is ignored unless a numpy Array is given as data - in which case, it is mandatory.
-    bayesian_network: BayesianNetwork or str, optional
-        Bayesian Network (or path to the BIF file describing it) used for final measurements (like
-        the log likelihood of the dataset)
-    equivalent_sample_size: int, default=10
-        Equivalent sample size used to compute BDeu scores.
-    bdeu_score_method: {"forloop", "unique", "mask"}, default="unique"
-        Method used to count state frequencies. Possible values:
-
-            * "unique": np.unique over the sliced dataset
-            * "forloop": Standard for loop
-            * "mask": Masking to segment the dataset into smaller datasets with each parent state combinations
-
-        "unique" should be used, other methods are kept for compatibility’s sake.
-    results_path: str, optional
-        Path to store the results logger file. If not specified, no logging will be done.
-    input_file_name: str, optional
-        Filename of the input data. Only used if data is not specified as a CSV and if results_path is not None.
-    flush_frequency: int, default=300
-        Time (in seconds) between results logger flushes / how often the file is written to.
     """
-
-    # CONSTRUCTOR #
-
-    def __init__(self, data, nodes=None, bayesian_network=None,
-                 equivalent_sample_size=10, bdeu_score_method="unique",
-                 results_path=None, input_file_name=None, flush_frequency=300):
-
-        # Call the super constructor
-        super().__init__(data, nodes, bayesian_network,
-                         equivalent_sample_size, bdeu_score_method,
-                         results_path, input_file_name, flush_frequency)
 
     # MAIN METHODS #
 

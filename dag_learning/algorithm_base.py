@@ -13,7 +13,7 @@ from pandas import DataFrame, read_csv
 from dag_scoring import ScoreCache, BDeuScore
 from utils import ResultsLogger
 
-from typing import Optional
+from typing import Optional, Any
 
 
 class BaseAlgorithm:
@@ -41,22 +41,17 @@ class BaseAlgorithm:
     bayesian_network: BayesianNetwork or str, optional
         Bayesian Network (or path to the BIF file describing it) used for final measurements (like
         the log likelihood of the dataset)
-    equivalent_sample_size: int, default=10
-        Equivalent sample size used to compute BDeu scores.
-    bdeu_score_method: {"forloop", "unique", "mask"}, default="unique"
-        Method used to count state frequencies. Possible values:
-
-            * "unique": np.unique over the sliced dataset
-            * "forloop": Standard for loop
-            * "mask": Masking to segment the dataset into smaller datasets with each parent state combinations
-
-        "unique" should be used, other methods are kept for compatibility’s sake.
+    score_method: {"bdeu"}
+        Scoring method used to build the Bayesian Network.
+        Any required arguments are passed through **score_arguments
     results_path: str, optional
         Path to store the results logger file. If not specified, no logging will be done.
     input_file_name: str, optional
         Filename of the input data. Only used if data is not specified as a CSV and if results_path is not None.
     flush_frequency: int, default=300
         Time (in seconds) between results logger flushes / how often the file is written to.
+    **score_arguments
+        Arguments to provide to the scoring method. Currently, only BDeu is available as a scoring method.
     """
 
     # ATTRIBUTES #
@@ -74,18 +69,19 @@ class BaseAlgorithm:
     # Data structures #
     # Data structures and utilities to be used during the algorithm execution
 
+    # Score method used
+    score_type: str
+    # Local scorer
+    local_scorer: Any
     # Local score cache
     score_cache: ScoreCache
-    # BDeU scorer
-    bdeu_scorer: BDeuScore
     # Log manager
     results_logger: Optional[ResultsLogger]
 
     # CONSTRUCTOR #
 
-    def __init__(self, data, nodes=None, bayesian_network=None,
-                 equivalent_sample_size=10, bdeu_score_method="unique",
-                 results_path=None, input_file_name=None, flush_frequency=300):
+    def __init__(self, data, nodes=None, bayesian_network=None, score_method="bdeu",
+                 results_path=None, input_file_name=None, flush_frequency=300, **score_arguments):
 
         # Process the input data and, if necessary, convert it into a numpy array
         if isinstance(data, (str, DataFrame)):
@@ -120,11 +116,23 @@ class BaseAlgorithm:
 
         # Initialize the utility classes
 
-        # Local score cache and BDeu scorer
+        # Local score cache
         self.score_cache = ScoreCache()
-        self.bdeu_scorer = BDeuScore(self.data, self.nodes,
-                                     equivalent_sample_size=equivalent_sample_size,
-                                     count_method=bdeu_score_method)
+
+        # Scorer
+        if score_method == "bdeu":
+            self.score_type = "bdeu"
+            equivalent_sample_size = score_arguments["bdeu_equivalent_sample_size"] if \
+                ("bdeu_equivalent_sample_size" in score_arguments) else 10
+            count_method = score_arguments["bdeu_count_method"] if \
+                ("bdeu_count_method" in score_arguments) else "unique"
+
+            self.local_scorer = BDeuScore(self.data, self.nodes,
+                                          equivalent_sample_size=equivalent_sample_size,
+                                          count_method=count_method)
+        else:
+            # Currently, only BDeu is implemented
+            raise NotImplementedError("Only BDeu scoring is currently available")
 
         # If required, create the Results Logger
         if results_path:
