@@ -67,6 +67,40 @@ dataset_paths = {"asia": ".input/csv/small/asia/{}/asia-{}_{}.csv", # SMALL
 
 # USER ARGUMENTS #
 
+# These arguments can be passed as either:
+#   - Arguments through console (parsed using ArgParse)
+#   - A JSON config file (passing the path to the file)
+
+# BIF file to use to load a bayesian network
+# Either a known BNLearn file or the path to a BIF file can be provided
+bif_file = "asia"
+
+# CSV file containing the dataset to use
+# Either a known BNLearn name or the path to a CSV file can be provided
+csv_file = "asia"
+
+# Size of the dataset
+# By default, all provided datasets are of size 10000
+csv_size = 10000
+
+# Algorithm used
+# Currently, only HillClimbing is available
+algorithm = "HillClimbing"
+
+# Scoring method used within the algorithm
+# Currently, only BDeu is available
+score_method = "bdeu"
+
+# BDEU SPECIFIC ARGUMENTS
+# Frequency counting method
+# (Note: it is recommended to use "unique" as it is the most efficient implementation")
+bdeu_count_method = "unique"
+
+# Equivalent sample size
+bdeu_equivalent_sample_size = 10
+
+# ARGUMENT PARSING #
+
 # TODO ADD PROPER ARGUMENT PARSING
 
 # Read a BIF for extra stats
