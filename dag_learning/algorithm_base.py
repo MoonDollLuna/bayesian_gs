@@ -46,8 +46,9 @@ class BaseAlgorithm:
         Any required arguments are passed through **score_arguments
     results_path: str, optional
         Path to store the results logger file. If not specified, no logging will be done.
-    input_file_name: str, optional
-        Filename of the input data. Only used if data is not specified as a CSV and if results_path is not None.
+    output_file_name: str, optional
+        Filename of the output data. Only used if data is not specified as a CSV and if results_path is not None.
+        By default, uses the name of the CSV file (without the .CSV extension)
     flush_frequency: int, default=300
         Time (in seconds) between results logger flushes / how often the file is written to.
     **score_arguments
@@ -81,7 +82,7 @@ class BaseAlgorithm:
     # CONSTRUCTOR #
 
     def __init__(self, data, nodes=None, bayesian_network=None, score_method="bdeu",
-                 results_path=None, input_file_name=None, flush_frequency=300, **score_arguments):
+                 results_path=None, output_file_name=None, flush_frequency=300, **score_arguments):
 
         # Process the input data and, if necessary, convert it into a numpy array
         if isinstance(data, (str, DataFrame)):
@@ -89,7 +90,7 @@ class BaseAlgorithm:
 
             # If a path to a CSV file is given, read the data from it and extract the input file name
             if isinstance(data, str):
-                input_file_name = os.path.splitext(os.path.basename(data))[0]
+                output_file_name = os.path.splitext(os.path.basename(data))[0]
                 data = read_csv(data)
 
             # Convert the data into a numpy array and extract the node names
@@ -108,7 +109,7 @@ class BaseAlgorithm:
             raise TypeError("Data must be provided as a CSV file, a Pandas dataframe or a Numpy array.")
 
         # Check if an input name has been given, if required
-        if results_path and not input_file_name:
+        if results_path and not output_file_name:
             raise AttributeError("An input file name must be specified if results logging is used.")
 
         # If a bayesian network is specified, store it for structure checks
@@ -136,7 +137,7 @@ class BaseAlgorithm:
 
         # If required, create the Results Logger
         if results_path:
-            self.results_logger = ResultsLogger(results_path, input_file_name, flush_frequency)
+            self.results_logger = ResultsLogger(results_path, output_file_name, flush_frequency)
         else:
             self.results_logger = None
 

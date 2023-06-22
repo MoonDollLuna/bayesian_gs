@@ -23,8 +23,8 @@ class ResultsLogger:
     ----------
     results_path: str
         Location of the final CSV results file. Note that this path should NOT include the file name.
-    input_name: str
-        Name of the input data to use. Usually, the name of either the data file or the given dataset.
+    output_name: str
+        Name of the output data to use. Usually, the name of either the data file or the given dataset.
     flush_frequency: int
         How often the results file is flushed / updated (in seconds). The file will always be flushed
         once
@@ -51,7 +51,7 @@ class ResultsLogger:
     flush_frequency: int
 
     # CONSTRUCTOR #
-    def __init__(self, results_path, input_name, flush_frequency):
+    def __init__(self, results_path, output_name, flush_frequency):
 
         # Check if the path exists and, if necessary, create the folders
         if not os.path.exists(results_path):
@@ -62,10 +62,10 @@ class ResultsLogger:
         self._flush_frequency = flush_frequency
 
         # Create the input file name
-        # <input_name>_<time>.csv
-        self._file_name = "{}_{}.csv".format(input_name, self._last_update_time)
+        # <output_name>_<time>.csv
+        self._file_name = "{}_{}.csv".format(output_name, self._last_update_time)
         # Create the path for the actual file
-        self._file_path = os.path.join(results_path, input_name)
+        self._file_path = os.path.join(results_path, output_name)
 
         # Create the file and store the handles
         self._create_results_file(self._file_path)

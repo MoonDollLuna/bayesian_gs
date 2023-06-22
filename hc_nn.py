@@ -84,7 +84,6 @@ csv_file = "asia"
 csv_size = 10000
 
 # Algorithm used
-# Currently, only HillClimbing is available
 algorithm = "HillClimbing"
 
 # Scoring method used within the algorithm
@@ -98,6 +97,18 @@ bdeu_count_method = "unique"
 
 # Equivalent sample size
 bdeu_equivalent_sample_size = 10
+
+# RESULTS LOGGING SPECIFIC ARGUMENTS
+# Path where the results should be stored (WITHOUT THE FILE NAME)
+results_path = None
+
+# Name of the output file (without extension)
+# If a CSV file is specified as input, this argument is ignored
+output_name = None
+
+# Flush frequency - How often is the results file flushed (in seconds)
+# By default, the file is flushed every 5 minutes
+flush_frequency = 300
 
 # ARGUMENT PARSING #
 
