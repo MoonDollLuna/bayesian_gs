@@ -4,6 +4,8 @@
 
 # IMPORTS #
 
+import argparse
+
 from pgmpy.readwrite.BIF import BIFReader
 from dag_learning import HillClimbing
 
@@ -67,24 +69,30 @@ dataset_paths = {"asia": ".input/csv/small/asia/{}/asia-{}_{}.csv", # SMALL
 
 # USER ARGUMENTS #
 
+# TODO POSSIBLY REMOVE
+
 # These arguments can be passed as either:
 #   - Arguments through console (parsed using ArgParse)
 #   - A JSON config file (passing the path to the file)
 
-# BIF file to use to load a bayesian network
-# Either a known BNLearn file or the path to a BIF file can be provided
-bif_file = "asia"
-
 # CSV file containing the dataset to use
-# Either a known BNLearn name or the path to a CSV file can be provided
+# Either an existing BNLearn name or the path to a CSV file can be provided
 csv_file = "asia"
+
+# Number of the dataset (between 1 and 10)
+# This is ignored it a CSV path is specified instead of an existing BNLearn bayesian network
+csv_number = 1
 
 # Size of the dataset
 # By default, all provided datasets are of size 10000
 csv_size = 10000
 
+# BIF file to use to load a bayesian network
+# Either an existing BNLearn file or the path to a BIF file can be provided
+bif_file = "asia"
+
 # Algorithm used
-algorithm = "HillClimbing"
+algorithm = "hillclimbing"
 
 # Scoring method used within the algorithm
 # Currently, only BDeu is available
@@ -110,14 +118,75 @@ output_name = None
 # By default, the file is flushed every 5 minutes
 flush_frequency = 300
 
+# HILL CLIMBING SPECIFIC ARGUMENTS
+# Starting DAG - if a path is specified, a starting DAG will be loaded
+starting_dag = None
+
+# Epsilon - minimum increase for local score for an action to be considered
+epsilon = 0.0001
+
+# Maximum number of iterations
+max_iterations = 1e6
+
+# Whether the score cache needs to be wiped or not
+wipe_cache = False
+
+# Level of verbosity
+verbose = 0
+
+
 # ARGUMENT PARSING #
 
-# TODO ADD PROPER ARGUMENT PARSING
+# Create the parser
+parser = argparse.ArgumentParser(
+    description="Performs iterations of a hill-climbing based DAG building algorithm in order to achieve a good enough "
+                "DAG based on the specified data.",
+    epilog="Note that the arguments may be provided as a JSON string instead"
+)
 
-# Read a BIF for extra stats
-bif = BIFReader("./input/bif/small/asia.bif")
-bn = bif.get_model()
+# Add all necessary arguments
 
-# Create and launch the model (own)
-hill_climbing = HillClimbing("./input/csv/small/asia/10000/asia-10000_1.csv", bayesian_network=bn)
-dag = hill_climbing.estimate_dag(verbose=6)
+# Dataset used - either a known BNLearn network or the path to a CSV file.
+parser.add_argument("-ds",
+                    "--dataset",
+                    help="Dataset used to build the DAG on. Either an already existing BNLearn Bayesian Network "
+                         "(such as Asia or Andes) or the path to a CSV file may be provided. If a BNLearn Bayesian "
+                         "Network is used, a dataset number (between 1 and 10) and a dataset size (usually 10000) "
+                         "must be specified to choose which CSV file to use.")
+
+# Dataset number (only required if a BNLearn dataset is specified)
+parser.add_argument("-dsn",
+                    "--dataset-number",
+                    type=int,
+                    choices=range(1,11),
+                    metavar="[1-10]",
+                    help="ONLY REQUIRED IF A BNLEARN DATASET IS SPECIFIED. Which of the 10 available datasets for each "
+                         "BNLearn bayesian networks should be used.")
+
+# Dataset size (only required if a BNLearn dataset is specified)
+parser.add_argument("-dss",
+                    "-dataset-size",
+                    type=int,
+                    choices=[10000],
+                    help="ONLY REQUIRED IF A BNLEARN DATASET IS SPECIFIED. Number of instances of the dataset used.")
+
+# BIF file used for statistics - either a known BNLearn network or the path to a BIF file.
+parser.add_argument("-bif",
+                    "--bif",
+                    help="Bayesian Network used for DAG statistics after the hill climbing process. Either an already "
+                         "existing BNLearn Bayesian Network (such as Asia or Andes) or "
+                         "the path to a BIF file may be provided.")
+
+# Algorithm used - which version of Hill Climbing to use
+parser.add_argument("-alg",
+                    "--algorithm",
+                    choices=["hillclimbing"],
+                    help="Algorithm to perform.")
+
+# Scoring method used within the algorithm
+parser.add_argument("-s",
+                    "--score",
+                    choices=["bdeu"],
+                    help="Scoring method used to measure the quality of the DAG during the algorithm.")
+
+parser.print_help()
