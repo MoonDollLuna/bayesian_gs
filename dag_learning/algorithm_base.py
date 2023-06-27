@@ -45,12 +45,17 @@ class BaseAlgorithm:
         Scoring method used to build the Bayesian Network.
         Any required arguments are passed through **score_arguments
     results_path: str, optional
-        Path to store the results logger file. If not specified, no logging will be done.
+        Path (without file name) to store the results logger file. If not specified, no logging will be done.
+    resulting_dag_path: str, optional
+        Path (without file name) to store the resulting DAG (as a bayesian network with estimated CPDs).
+        If not specified, the resulting DAG will not be stored.
     output_file_name: str, optional
-        Filename of the output data. Only used if data is not specified as a CSV and if results_path is not None.
+        Filename of the output data (both results log and resulting DAG).
+        Only used if data is not specified as a CSV and if results_path or resulting_dag_path is not None.
         By default, uses the name of the CSV file (without the .CSV extension)
     flush_frequency: int, default=300
         Time (in seconds) between results logger flushes / how often the file is written to.
+
     **score_arguments
         Arguments to provide to the scoring method. Currently, only BDeu is available as a scoring method.
     """
@@ -81,10 +86,17 @@ class BaseAlgorithm:
     # Log manager
     results_logger: Optional[ResultsLogger]
 
+    # DAG storage #
+    # Path to store the DAG
+    dag_path: Optional[str]
+    # File name of the resulting DAG BIF file
+    dag_name: str
+
     # CONSTRUCTOR #
 
     def __init__(self, data, nodes=None, bayesian_network=None, score_method="bdeu",
-                 results_path=None, output_file_name=None, flush_frequency=300, **score_arguments):
+                 results_path=None, output_file_name=None, flush_frequency=300,
+                 resulting_dag_path=None, **score_arguments):
 
         # Process the input data and, if necessary, convert it into a numpy array
         if isinstance(data, (str, DataFrame)):
@@ -99,7 +111,7 @@ class BaseAlgorithm:
             self.data = data.to_numpy(dtype='<U8')
             self.dataframe = data
             self.nodes = data.columns.values.tolist()
-            
+
         elif isinstance(data, ndarray):
             # Numpy
             self.data = data
@@ -146,3 +158,6 @@ class BaseAlgorithm:
         else:
             self.results_logger = None
 
+        # If specified, store both DAG path and name
+        self.dag_path = resulting_dag_path
+        self.dag_name = output_file_name

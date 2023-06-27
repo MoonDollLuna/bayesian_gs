@@ -33,7 +33,7 @@ class HillClimbing(BaseAlgorithm):
     # MAIN METHODS #
 
     def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
-                     wipe_cache=False, verbose=0):
+                     wipe_cache=False, verbose=0, log_likelihood_size=10000):
         """
         Performs Hill Climbing to find a local best DAG based on BDeU.
 
@@ -61,6 +61,8 @@ class HillClimbing(BaseAlgorithm):
                 - 4: Intermediate results for each step are printed
                 - 5: Image of the final graph is printed
                 - 6: DAG is directly printed
+        log_likelihood_size: int, default=10000
+            Size of the data sample generated for the log likelihood score
 
         Returns
         -------
@@ -346,7 +348,8 @@ class HillClimbing(BaseAlgorithm):
         if verbose >= 5:
             dag.to_daft().show()
 
-        # TODO STORE DAG
+        # TODO STORE DAG (IF SPECIFIED)
+        # TODO LOG LIKELIHOOD (IF SPECIFIED)
         return dag
 
     # AUXILIARY METHODS #
