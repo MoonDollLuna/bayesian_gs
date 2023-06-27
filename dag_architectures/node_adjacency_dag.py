@@ -5,6 +5,7 @@
 # IMPORTS #
 from typing import List
 from dag_architectures import ExtendedDAG
+from pgmpy.models.BayesianNetwork import BayesianNetwork
 
 import numpy as np
 import networkx as nx
@@ -428,3 +429,24 @@ class NodeAdjacencyDAG(ExtendedDAG):
         # Invert the edge in the adjacency matrix
         self._node_adjacency_list[u][v] = 0
         self._node_adjacency_list[v][u] = 1
+
+    # BAYESIAN NETWORK METHODS #
+
+    @staticmethod
+    def from_bayesian_network(bayesian_network):
+        """
+        Converts a Bayesian Network into an Extended DAG (discarding the CPDs)
+
+        Parameters
+        ----------
+        bayesian_network: BayesianNetwork
+
+        Returns
+        -------
+        AdjacencyDAG
+        """
+
+        dag = NodeAdjacencyDAG(list(bayesian_network.nodes))
+        dag.add_edges_from(list(bayesian_network.edges))
+
+        return dag

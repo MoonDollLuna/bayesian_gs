@@ -5,9 +5,10 @@
 # IMPORTS #
 import networkx as nx
 from pgmpy.base import DAG
+from pgmpy.models.BayesianNetwork import BayesianNetwork
+from pandas import DataFrame
 
 
-# TODO REMOVE EDGE
 class ExtendedDAG(DAG):
     """
     Extension of the DAG (Directed Acyclical Graph) class provided by pgmpy, adding additional functionality
@@ -473,7 +474,7 @@ class ExtendedDAG(DAG):
         """
 
         # If the edges are given as indices, transform them to their appropriate names
-        # u, v = self.convert_indices_to_nodes(u, v)
+        u, v = self.convert_indices_to_nodes(u, v)
 
         # Remove the edges from the graph
         # Exceptions are checked by the superclass method
@@ -507,3 +508,50 @@ class ExtendedDAG(DAG):
         super().remove_edge(u, v)
         # Adds the opposite edge back
         super().add_edge(v, u, weight=weight)
+
+    # BAYESIAN NETWORK METHODS #
+
+    def to_bayesian_network(self, dataset=None):
+        """
+        Converts the current Extended DAG into a Bayesian Network. If a dataset is specified, CPDs are estimated too.
+
+        Parameters
+        ----------
+        dataset: DataFrame, optional
+            Dataset to estimate CPDs from
+
+        Returns
+        -------
+        BayesianNetwork
+        """
+
+        # Create the Bayesian Network and add all the nodes and edges
+        bn = BayesianNetwork()
+        bn.add_nodes_from(list(self.nodes))
+        bn.add_edges_from(list(self.edges))
+
+        # If a dataset is specified, estimate the CPDs
+        if dataset:
+            bn.fit(dataset)
+
+        return bn
+
+    @staticmethod
+    def from_bayesian_network(bayesian_network):
+        """
+        Converts a Bayesian Network into an Extended DAG (discarding the CPDs)
+
+        Parameters
+        ----------
+        bayesian_network: BayesianNetwork
+
+        Returns
+        -------
+        ExtendedDAG
+        """
+
+        dag = ExtendedDAG(list(bayesian_network.nodes))
+        dag.add_edges_from(list(bayesian_network.edges))
+
+        return dag
+
