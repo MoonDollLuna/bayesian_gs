@@ -94,6 +94,7 @@ class BaseAlgorithm:
                 data = read_csv(data)
 
             # Convert the data into a numpy array and extract the node names
+            # TODO KEEP THE DATAFRAME TOO FOR FUTURE DATA
             self.data = data.to_numpy(dtype='<U8')
             self.nodes = data.columns.values.tolist()
         elif isinstance(data, ndarray):

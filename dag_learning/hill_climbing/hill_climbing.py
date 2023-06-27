@@ -299,6 +299,7 @@ class HillClimbing(BaseAlgorithm):
         # METRICS COMPUTATION
 
         # TODO Learn a Bayesian Network for Log Likelihood and results storing
+        # TODO Create a BN with the same states and estimate using Bayesian Network method
 
         # Create an empty DAG to compute comparative scores
         empty_dag = ExtendedDAG(self.nodes)

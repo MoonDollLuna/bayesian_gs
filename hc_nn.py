@@ -99,7 +99,7 @@ parser.add_argument("-ds",
 # Dataset number (only required if a BNLearn dataset is specified)
 csv_number = 1
 parser.add_argument("-dsn",
-                    "--dataset-number",
+                    "--dataset_number",
                     type=int,
                     choices=range(1, 11),
                     metavar="[1-10]",
@@ -109,7 +109,7 @@ parser.add_argument("-dsn",
 # Dataset size (only required if a BNLearn dataset is specified)
 csv_size = 10000
 parser.add_argument("-dss",
-                    "-dataset-size",
+                    "-dataset_size",
                     type=int,
                     choices=[10000],
                     help="ONLY REQUIRED IF A BNLEARN DATASET IS SPECIFIED. Number of instances of the dataset used.")
@@ -214,8 +214,30 @@ parser.add_argument("-rf",
 
 # Parse the arguments and, if required, use the JSON string instead
 arguments = vars(parser.parse_args())
-print(arguments["config"])
 if arguments["config"]:
     arguments = json.loads(arguments["config"])
 
-print(arguments)
+# Start parsing all present arguments
+if arguments["dataset"]:
+    csv_file = arguments["dataset"]
+
+if arguments["dataset_number"]:
+    csv_number = arguments["dataset_number"]
+
+if arguments["dataset_size"]:
+    csv_size = arguments["dataset_size"]
+
+if arguments["bif"]:
+    bif_file = arguments["bif"]
+
+if arguments["algorithm"]:
+    algorithm = arguments["hillclimbing"]
+
+if arguments["score"]:
+    score_method = arguments["score"]
+
+if arguments["hillclimbing_path"]:
+    # TODO Method to convert Bayesian Network to ExtendedDAG
+    starting_dag = BIFReader(arguments["hillclimbing_path"]).get_model()
+
+
