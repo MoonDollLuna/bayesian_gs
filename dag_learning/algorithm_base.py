@@ -62,6 +62,8 @@ class BaseAlgorithm:
 
     # Data from which to generate a DAG
     data: str or ndarray or DataFrame
+    # Dataframe, used for PGMPY operations
+    dataframe: DataFrame or None
     # Nodes contained within the data
     nodes: list
     # Original BN (used to compare structure results)
@@ -94,12 +96,14 @@ class BaseAlgorithm:
                 data = read_csv(data)
 
             # Convert the data into a numpy array and extract the node names
-            # TODO KEEP THE DATAFRAME TOO FOR FUTURE DATA
             self.data = data.to_numpy(dtype='<U8')
+            self.dataframe = data
             self.nodes = data.columns.values.tolist()
+            
         elif isinstance(data, ndarray):
             # Numpy
             self.data = data
+            self.dataframe = None
 
             # Nodes MUST be given as an argument
             if nodes is None:
