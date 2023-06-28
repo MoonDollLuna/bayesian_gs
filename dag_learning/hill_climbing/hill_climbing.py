@@ -4,15 +4,17 @@
 
 # IMPORTS #
 import math
+from time import time
+import datetime
+from tqdm import tqdm
 
 from dag_learning import BaseAlgorithm, \
     find_legal_hillclimbing_operations, compute_average_markov_mantle, compute_smhd, compute_percentage_difference
 from dag_architectures import ExtendedDAG
 
-from time import time
-import datetime
-from tqdm import tqdm
-
+from pgmpy.sampling import BayesianModelSampling
+from pgmpy.metrics import log_likelihood_score
+from pgmpy.readwrite.BIF import BIFWriter
 
 class HillClimbing(BaseAlgorithm):
     """
@@ -98,10 +100,6 @@ class HillClimbing(BaseAlgorithm):
         # Delta BDeU (change per iteration)
         bdeu_delta: float = math.inf
 
-        ##############################################
-        # Metrics used to evaluate the resulting DAG #
-        ##############################################
-
         # PARAMETER INITIALIZATION #
 
         # Store the DAG and, if necessary, create an empty one with the existing nodes
@@ -126,7 +124,7 @@ class HillClimbing(BaseAlgorithm):
         for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=(verbose < 4)):
 
             # Compute the BDeU for each node
-            best_bdeu += self.bdeu_scorer.local_score(node, dag.get_parents(node))
+            best_bdeu += self.local_scorer.local_score(node, dag.get_parents(node))
 
             # Update the metrics
             computed_operations += 1
@@ -300,14 +298,15 @@ class HillClimbing(BaseAlgorithm):
         # END OF THE LOOP - DAG FINALIZED
         # METRICS COMPUTATION
 
-        # TODO Learn a Bayesian Network for Log Likelihood and results storing
-        # TODO Create a BN with the same states and estimate using Bayesian Network method
-
         # Create an empty DAG to compute comparative scores
         empty_dag = ExtendedDAG(self.nodes)
 
+        # Create a bayesian network based on the currently learned DAG with the dataset used
+        # and for log likelihood scoring
+        current_bn = dag.to_bayesian_network(self.dataframe)
+
         # BDEU
-        empty_bdeu = self.bdeu_scorer.global_score(empty_dag)
+        empty_bdeu = self.local_scorer.global_score(empty_dag)
         bdeu_diff = best_bdeu - empty_bdeu
         bdeu_percent = compute_percentage_difference(empty_bdeu, best_bdeu)
 
@@ -331,12 +330,24 @@ class HillClimbing(BaseAlgorithm):
             smhd_diff = empty_smhd - smhd
             smhd_percent = compute_percentage_difference(smhd, empty_smhd)
 
+            # Log likelihood of sampled data
+            # Sample data from the original bayesian network
+            sampled_data = BayesianModelSampling(self.bayesian_network).forward_sample(log_likelihood_size)
+
+            # Check the log likelihood for both original and new DAG
+            log_likelihood = log_likelihood_score(current_bn, sampled_data)
+            original_log_likelihood = log_likelihood_score(self.bayesian_network, sampled_data)
+            log_likelihood_diff = log_likelihood - original_log_likelihood
+            log_likelihood_percent = compute_percentage_difference(original_log_likelihood, log_likelihood)
+
             # Print the results
             self._write_final_results(verbose, best_bdeu, empty_bdeu, bdeu_diff, bdeu_percent,
                                       total_actions, add_operations, remove_operations, invert_operations,
                                       computed_operations, total_operations, time_taken, average_markov,
                                       original_markov, average_markov_diff, average_markov_percent,
-                                      smhd, empty_smhd, smhd_diff, smhd_percent)
+                                      smhd, empty_smhd, smhd_diff, smhd_percent,
+                                      log_likelihood, original_log_likelihood,
+                                      log_likelihood_diff, log_likelihood_percent)
 
         # If no bayesian network is provided, print the data without its related statistics
         else:
@@ -348,8 +359,15 @@ class HillClimbing(BaseAlgorithm):
         if verbose >= 5:
             dag.to_daft().show()
 
-        # TODO STORE DAG (IF SPECIFIED)
-        # TODO LOG LIKELIHOOD (IF SPECIFIED)
+        # If a path is specified to store the resulting DAG, the DAG will be converted into BIF format and stored
+        if self.dag_path:
+
+            # Compute the name of the file
+            full_dag_path = "{}/{}.bif".format(self.dag_path, self.dag_name)
+
+            # Store the BIF
+            BIFWriter(current_bn).write_bif(full_dag_path)
+
         return dag
 
     # AUXILIARY METHODS #
@@ -389,7 +407,7 @@ class HillClimbing(BaseAlgorithm):
             operations += 1
         else:
             # BDeU score does not exist: compute it
-            original_bdeu = self.bdeu_scorer.local_score(node, original_parents)
+            original_bdeu = self.local_scorer.local_score(node, original_parents)
             self.score_cache.insert_local_score(node, original_parents, original_bdeu)
 
             operations += 1
@@ -404,7 +422,7 @@ class HillClimbing(BaseAlgorithm):
             operations += 1
         else:
             # BDeU score does not exist: compute it
-            new_bdeu = self.bdeu_scorer.local_score(node, new_parents)
+            new_bdeu = self.local_scorer.local_score(node, new_parents)
             self.score_cache.insert_local_score(node, new_parents, new_bdeu)
 
             operations += 1
@@ -438,8 +456,9 @@ class HillClimbing(BaseAlgorithm):
         self.results_logger.write_line("# EXPERIMENT ###########################\n\n")
         self.results_logger.write_line("# * Algorithm used: HillClimbing\n")
         self.results_logger.write_line("#\t - Score method used: BDeu\n")
-        self.results_logger.write_line("#\t - Frequency counting methodology: {}\n".format(self.bdeu_scorer.count_method))
-        self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.bdeu_scorer.esz))
+        self.results_logger.write_line("#\t - Frequency counting methodology: {}\n".format(
+            self.local_scorer.count_method))
+        self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.local_scorer.esz))
 
         # Write the dataset info
         self.results_logger.write_line("# * Dataset used: {}\n\n".format(self.results_logger.file_name))
@@ -551,7 +570,8 @@ class HillClimbing(BaseAlgorithm):
                              total_operations, add_operations, remove_operations, invert_operations,
                              computed_scores, total_scores, time_taken,
                              markov, original_markov=None, markov_difference=None, markov_difference_percent=None,
-                             smhd=None, empty_smhd=None, smhd_difference=None, smhd_difference_percent=None):
+                             smhd=None, empty_smhd=None, smhd_difference=None, smhd_difference_percent=None,
+                             log=None, original_log=None, log_difference=None, log_difference_percent=None):
         """
         Write the final experiment results, if applicable, into the results logger.
 
@@ -601,6 +621,14 @@ class HillClimbing(BaseAlgorithm):
             Difference in SMHD between the final DAG and an empty DAG
         smhd_difference_percent: float, optional
             Difference (in percentage) in SMHD between the final DAG and an empty DAG
+        log: float, optional
+            Log likelihood of the sampled data having been generated from the new Bayesian Network
+        original_log: float, optional
+            Log likelihood of the sampled data having been generated from the original Bayesian Network
+        log_difference: float, optional
+            Difference in log likelihood between the final and the original DAG
+        log_difference_percent: float, optional
+            Difference (in percent) in log likelihood between the final and the original DAG
         """
 
         # If a results logger exists, print the iteration data
@@ -628,14 +656,19 @@ class HillClimbing(BaseAlgorithm):
             # If a bayesian network exists, also write additional results
             if self.bayesian_network:
                 self.results_logger.write_line(
-                    "#\t * Original average Mankov mantle size: {}\n".format(original_markov))
+                    "#\t * Original average Markov mantle size: {}\n".format(original_markov))
                 self.results_logger.write_line("#\t * Markov difference: {}\n".format(markov_difference))
                 self.results_logger.write_line("#\t * Markov difference (%): {}%\n\n".format(markov_difference_percent))
 
                 self.results_logger.write_line("# - SMHD: {}\n".format(smhd))
                 self.results_logger.write_line("#\t * Empty graph SMHD: {}\n".format(empty_smhd))
                 self.results_logger.write_line("#\t * SMHD difference: {}\n".format(smhd_difference))
-                self.results_logger.write_line("#\t * SMHD difference (%): {}%\n".format(smhd_difference_percent))
+                self.results_logger.write_line("#\t * SMHD difference (%): {}%\n\n".format(smhd_difference_percent))
+
+                self.results_logger.write_line("# - Log likelihood: {}\n".format(log))
+                self.results_logger.write_line("#\t * Original model log likelihood: {}\n".format(original_log))
+                self.results_logger.write_line("#\t * Log likelihood difference: {}\n".format(log_difference))
+                self.results_logger.write_line("#\t * Log likelihood difference (%): {}%\n".format(log_difference_percent))
 
             self.results_logger.write_line("\n")
             self.results_logger.write_line("########################################\n")
@@ -663,7 +696,7 @@ class HillClimbing(BaseAlgorithm):
 
             # If a bayesian network exists, also write additional results
             if self.bayesian_network:
-                print("#\t * Original average Mankov mantle size: {}".format(original_markov))
+                print("#\t * Original average Markov mantle size: {}".format(original_markov))
                 print("#\t * Markov difference: {}".format(markov_difference))
                 print("#\t * Markov difference (%): {}%\n".format(markov_difference_percent))
 
@@ -671,3 +704,8 @@ class HillClimbing(BaseAlgorithm):
                 print("#\t * Empty graph SMHD: {}".format(empty_smhd))
                 print("#\t * SMHD difference: {}".format(smhd_difference))
                 print("#\t * SMHD difference (%): {}%".format(smhd_difference_percent))
+
+                print("# - Log likelihood: {}".format(log))
+                print("#\t * Original model log likelihood: {}".format(original_log))
+                print("#\t * Log likelihood difference: {}".format(log_difference))
+                print("#\t * Log likelihood difference (%): {}%".format(log_difference_percent))
