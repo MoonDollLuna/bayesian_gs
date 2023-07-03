@@ -9,6 +9,7 @@ import json
 
 from pgmpy.readwrite.BIF import BIFReader
 from dag_learning import HillClimbing
+from dag_architectures import ExtendedDAG
 
 # DICTIONARIES #
 
@@ -79,7 +80,7 @@ parser = argparse.ArgumentParser(
 
 # Add all necessary arguments
 
-# JSON CONFIG
+# JSON CONFIG #
 # If a JSON string is passed using config, the rest of the arguments will be ignored
 parser.add_argument("-c",
                     "--config",
@@ -225,17 +226,26 @@ parser.add_argument("-rf",
                     metavar="[rf > 0]",
                     help="Update frequency (in seconds) of the results log file.")
 
-# ARGUMENT PARSING #
+# Resulting BIF path - Path where the resulting BIF file will be stored in
+resulting_bif_path = None
+parser.add_argument("-rb",
+                    "--resulting_bif_path",
+                    help="If specified, path where the resulting BIF file (resulting DAG plus estimated CPDs) will "
+                         "be stored. NOTE: The actual file name should NOT be specified.")
+
+# ARGUMENT PARSING AND PRE-PROCESSING #
 
 # Parse the arguments and, if required, use the JSON string instead
 arguments = vars(parser.parse_args())
 if arguments["config"]:
     arguments = json.loads(arguments["config"])
 
-# Start parsing all present arguments
-if arguments["dataset"]:
-    csv_file = arguments["dataset"]
+# Start parsing, sanitizing and pre-processing all present arguments
 
+# DATASET AND BIF #
+
+# Dataset arguments (number and size) are parsed before the actual dataset path, in order
+# to be able to use them if necessary
 if arguments["dataset_number"]:
     csv_number = arguments["dataset_number"]
 
@@ -243,16 +253,101 @@ if arguments["dataset_size"]:
     csv_size = arguments["dataset_size"]
 
 if arguments["bif"]:
-    bif_file = arguments["bif"]
+    # Directly extract the BIF path from the dictionary if appropriate
+    if arguments["bif"] in bif_paths:
+        bif_file = bif_paths[arguments["bif"]]
+    else:
+        bif_file = arguments["bif"]
+
+if arguments["dataset"]:
+    # If a BNLearn dataset is specified, prepare the actual path to the CSV file
+    if arguments["dataset"] in dataset_paths:
+        csv_file = dataset_paths[arguments["dataset"]].format(csv_size, csv_number, csv_size)
+    else:
+        csv_file = arguments["dataset"]
+
+# ALGORITHM AND SCORE #
 
 if arguments["algorithm"]:
-    algorithm = arguments["hillclimbing"]
+    algorithm = arguments["algorithm"]
 
 if arguments["score"]:
     score_method = arguments["score"]
 
 if arguments["hillclimbing_path"]:
-    # TODO Method to convert Bayesian Network to ExtendedDAG
-    starting_dag = BIFReader(arguments["hillclimbing_path"]).get_model()
+    # Path is converted into a DAG directly
+    # TODO - Convert Extended DAG depending on type of algorithm
+    starting_dag = ExtendedDAG.from_bayesian_network(BIFReader(arguments["hillclimbing_path"]).get_model())
+
+if arguments["hillclimbing_epsilon"]:
+    if arguments["hillclimbing_epsilon"] < 0.0:
+        raise ValueError("HillClimbing Epsilon must be a positive number.")
+    else:
+        epsilon = arguments["hillclimbing_epsilon"]
+
+if arguments["hillclimbing_iterations"]:
+    if arguments["hillclimbing_iterations"] <= 0:
+        raise ValueError("HillClimbing Iterations must be a positive number.")
+    else:
+        max_iterations = arguments["hillclimbing_iterations"]
+
+if arguments["hillclimbing_loglikelihood"]:
+    if arguments["hillclimbing_loglikelihood"] <= 0:
+        raise ValueError("HillClimbing log likelihood must be a positive number.")
+    else:
+        log_likelihood_size = arguments["hillclimbing_loglikelihood"]
+
+if arguments["hillclimbing_wipe"]:
+    wipe_cache = True
+
+if arguments["hillclimbing_verbosity"]:
+    verbose = arguments["hillclimbing_verbosity"]
+
+# BDEU SCORE #
+
+if arguments["bdeu_counting"]:
+    bdeu_count_method = arguments["bdeu_counting"]
+
+if arguments["bdeu_sample_size"]:
+    if arguments["bdeu_sample_size"] <= 0:
+        raise ValueError("BDeu equivalent sample size must be a positive number.")
+    else:
+        bdeu_equivalent_sample_size = arguments["bdeu_sample_size"]
+
+# RESULTS LOGGING #
+
+if arguments["results_path"]:
+    results_path = arguments["results_path"]
+
+if arguments["results_name"]:
+    output_name = arguments["results_name"]
+
+if arguments["results_flush"]:
+    if arguments["results_flush"] <= 0:
+        raise ValueError("Flush frequency must be a positive number.")
+    else:
+        flush_frequency = arguments["results_flush"]
+
+if arguments["resulting_bif_path"]:
+    resulting_bif_path = arguments["resulting_bif_path"]
 
 
+# PARAMETER PRE-PROCESSING AND ALGORITHM EXECUTION
+
+if algorithm == "hillclimbing":
+
+    # Create the Hill Climbing instance
+    hill_climbing = HillClimbing(csv_file, nodes=None, bayesian_network=bif_file, score_method=score_method,
+                                 results_path=results_path, output_file_name=output_name,
+                                 flush_frequency=flush_frequency, resulting_bif_path=resulting_bif_path,
+                                 bdeu_equivalent_sample_size=bdeu_equivalent_sample_size,
+                                 bdeu_count_method=bdeu_count_method)
+
+    # Perform Hill Climbing
+    resulting_dag = hill_climbing.estimate_dag(starting_dag=starting_dag, epsilon=epsilon,
+                                               max_iterations=max_iterations, log_likelihood_size=log_likelihood_size,
+                                               wipe_cache=wipe_cache, verbose=verbose)
+
+else:
+    # TODO ADD MORE ALGORITHMS
+    pass

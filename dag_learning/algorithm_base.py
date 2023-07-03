@@ -46,7 +46,7 @@ class BaseAlgorithm:
         Any required arguments are passed through **score_arguments
     results_path: str, optional
         Path (without file name) to store the results logger file. If not specified, no logging will be done.
-    resulting_dag_path: str, optional
+    resulting_bif_path: str, optional
         Path (without file name) to store the resulting DAG (as a bayesian network with estimated CPDs).
         If not specified, the resulting DAG will not be stored.
     output_file_name: str, optional
@@ -96,7 +96,7 @@ class BaseAlgorithm:
 
     def __init__(self, data, nodes=None, bayesian_network=None, score_method="bdeu",
                  results_path=None, output_file_name=None, flush_frequency=300,
-                 resulting_dag_path=None, **score_arguments):
+                 resulting_bif_path=None, **score_arguments):
 
         # Process the input data and, if necessary, convert it into a numpy array
         if isinstance(data, (str, DataFrame)):
@@ -159,5 +159,5 @@ class BaseAlgorithm:
             self.results_logger = None
 
         # If specified, store both DAG path and name
-        self.dag_path = resulting_dag_path
+        self.dag_path = resulting_bif_path
         self.dag_name = output_file_name
