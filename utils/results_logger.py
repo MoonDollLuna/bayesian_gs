@@ -58,17 +58,17 @@ class ResultsLogger:
             Path(results_path).mkdir(parents=True, exist_ok=True)
 
         # Store the current time and the flush frequency
-        self._last_update_time = time.time()
-        self._flush_frequency = flush_frequency
+        self.last_update_time = time.time()
+        self.flush_frequency = flush_frequency
 
         # Create the input file name
         # <output_name>_<time>.csv
-        self._file_name = "{}_{}.csv".format(output_name, self._last_update_time)
+        self.file_name = "{}_{}.csv".format(output_name, self.last_update_time)
         # Create the path for the actual file
-        self._file_path = os.path.join(results_path, output_name)
+        self.file_path = os.path.join(results_path, output_name)
 
         # Create the file and store the handles
-        self._create_results_file(self._file_path)
+        self._create_results_file(self.file_path)
 
     # FILE AND PATH MANAGEMENT
     def _create_results_file(self, file_path):
@@ -133,10 +133,10 @@ class ResultsLogger:
         self._csv_writer.writerow(data)
 
         # Check the time that has passed and, if necessary, flush the file
-        if time.time() - self._last_update_time > self._flush_frequency:
+        if time.time() - self.last_update_time > self.flush_frequency:
 
             # Flush the file
             self._file.flush()
 
             # Update the timer
-            self._last_update_time = time.time()
+            self.last_update_time = time.time()
