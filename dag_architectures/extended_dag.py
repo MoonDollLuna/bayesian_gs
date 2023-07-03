@@ -531,7 +531,7 @@ class ExtendedDAG(DAG):
         bn.add_edges_from(list(self.edges))
 
         # If a dataset is specified, estimate the CPDs
-        if dataset:
+        if dataset is not None:
             bn.fit(dataset)
 
         return bn
