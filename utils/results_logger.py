@@ -65,7 +65,7 @@ class ResultsLogger:
         # <output_name>_<time>.csv
         self.file_name = "{}_{}.csv".format(output_name, self.last_update_time)
         # Create the path for the actual file
-        self.file_path = os.path.join(results_path, output_name)
+        self.file_path = os.path.join(results_path, self.file_name)
 
         # Create the file and store the handles
         self._create_results_file(self.file_path)
