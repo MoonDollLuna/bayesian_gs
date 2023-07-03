@@ -246,91 +246,108 @@ if arguments["config"]:
 
 # Dataset arguments (number and size) are parsed before the actual dataset path, in order
 # to be able to use them if necessary
-if arguments["dataset_number"]:
-    csv_number = arguments["dataset_number"]
+if "dataset_number" in arguments:
+    if arguments["dataset_number"]:
+        csv_number = arguments["dataset_number"]
 
-if arguments["dataset_size"]:
-    csv_size = arguments["dataset_size"]
+if "dataset_size" in arguments:
+    if arguments["dataset_size"]:
+        csv_size = arguments["dataset_size"]
 
-if arguments["bif"]:
-    # Directly extract the BIF path from the dictionary if appropriate
-    if arguments["bif"] in bif_paths:
-        bif_file = bif_paths[arguments["bif"]]
-    else:
-        bif_file = arguments["bif"]
+if "bif" in arguments:
+    if arguments["bif"]:
+        # Directly extract the BIF path from the dictionary if appropriate
+        if arguments["bif"] in bif_paths:
+            bif_file = bif_paths[arguments["bif"]]
+        else:
+            bif_file = arguments["bif"]
 
-if arguments["dataset"]:
-    # If a BNLearn dataset is specified, prepare the actual path to the CSV file
-    if arguments["dataset"] in dataset_paths:
-        csv_file = dataset_paths[arguments["dataset"]].format(csv_size, csv_number, csv_size)
-    else:
-        csv_file = arguments["dataset"]
+if "dataset" in arguments:
+    if arguments["dataset"]:
+        # If a BNLearn dataset is specified, prepare the actual path to the CSV file
+        if arguments["dataset"] in dataset_paths:
+            csv_file = dataset_paths[arguments["dataset"]].format(csv_size, csv_number, csv_size)
+        else:
+            csv_file = arguments["dataset"]
 
 # ALGORITHM AND SCORE #
 
-if arguments["algorithm"]:
-    algorithm = arguments["algorithm"]
+if "algorithm" in arguments:
+    if arguments["algorithm"]:
+        algorithm = arguments["algorithm"]
 
-if arguments["score"]:
-    score_method = arguments["score"]
+if "score" in arguments:
+    if arguments["score"]:
+        score_method = arguments["score"]
 
-if arguments["hillclimbing_path"]:
-    # Path is converted into a DAG directly
-    # TODO - Convert Extended DAG depending on type of algorithm
-    starting_dag = ExtendedDAG.from_bayesian_network(BIFReader(arguments["hillclimbing_path"]).get_model())
+if "hillclimbing_path" in arguments:
+    if arguments["hillclimbing_path"]:
+        # Path is converted into a DAG directly
+        # TODO - Convert Extended DAG depending on type of algorithm
+        starting_dag = ExtendedDAG.from_bayesian_network(BIFReader(arguments["hillclimbing_path"]).get_model())
 
-if arguments["hillclimbing_epsilon"]:
-    if arguments["hillclimbing_epsilon"] < 0.0:
-        raise ValueError("HillClimbing Epsilon must be a positive number.")
-    else:
-        epsilon = arguments["hillclimbing_epsilon"]
+if "hillclimbing_epsilon" in arguments:
+    if arguments["hillclimbing_epsilon"]:
+        if arguments["hillclimbing_epsilon"] < 0.0:
+            raise ValueError("HillClimbing Epsilon must be a positive number.")
+        else:
+            epsilon = arguments["hillclimbing_epsilon"]
 
-if arguments["hillclimbing_iterations"]:
-    if arguments["hillclimbing_iterations"] <= 0:
-        raise ValueError("HillClimbing Iterations must be a positive number.")
-    else:
-        max_iterations = arguments["hillclimbing_iterations"]
+if "hillclimbing_iterations" in arguments:
+    if arguments["hillclimbing_iterations"]:
+        if arguments["hillclimbing_iterations"] <= 0:
+            raise ValueError("HillClimbing Iterations must be a positive number.")
+        else:
+            max_iterations = arguments["hillclimbing_iterations"]
 
-if arguments["hillclimbing_loglikelihood"]:
-    if arguments["hillclimbing_loglikelihood"] <= 0:
-        raise ValueError("HillClimbing log likelihood must be a positive number.")
-    else:
-        log_likelihood_size = arguments["hillclimbing_loglikelihood"]
+if "hillclimbing_loglikelihood" in arguments:
+    if arguments["hillclimbing_loglikelihood"]:
+        if arguments["hillclimbing_loglikelihood"] <= 0:
+            raise ValueError("HillClimbing log likelihood must be a positive number.")
+        else:
+            log_likelihood_size = arguments["hillclimbing_loglikelihood"]
 
-if arguments["hillclimbing_wipe"]:
-    wipe_cache = True
+if "hillclimbing_wipe" in arguments:
+    if arguments["hillclimbing_wipe"]:
+        wipe_cache = True
 
-if arguments["hillclimbing_verbosity"]:
-    verbose = arguments["hillclimbing_verbosity"]
+if "hillclimbing_verbosity" in arguments:
+    if arguments["hillclimbing_verbosity"]:
+        verbose = arguments["hillclimbing_verbosity"]
 
 # BDEU SCORE #
 
-if arguments["bdeu_counting"]:
-    bdeu_count_method = arguments["bdeu_counting"]
+if "bdeu_counting" in arguments:
+    if arguments["bdeu_counting"]:
+        bdeu_count_method = arguments["bdeu_counting"]
 
-if arguments["bdeu_sample_size"]:
-    if arguments["bdeu_sample_size"] <= 0:
-        raise ValueError("BDeu equivalent sample size must be a positive number.")
-    else:
-        bdeu_equivalent_sample_size = arguments["bdeu_sample_size"]
+if "bdeu_sample_size" in arguments:
+    if arguments["bdeu_sample_size"]:
+        if arguments["bdeu_sample_size"] <= 0:
+            raise ValueError("BDeu equivalent sample size must be a positive number.")
+        else:
+            bdeu_equivalent_sample_size = arguments["bdeu_sample_size"]
 
 # RESULTS LOGGING #
 
-if arguments["results_path"]:
-    results_path = arguments["results_path"]
+if "results_path" in arguments:
+    if arguments["results_path"]:
+        results_path = arguments["results_path"]
 
-if arguments["results_name"]:
-    output_name = arguments["results_name"]
+if "results_name" in arguments:
+    if arguments["results_name"]:
+        output_name = arguments["results_name"]
 
-if arguments["results_flush"]:
-    if arguments["results_flush"] <= 0:
-        raise ValueError("Flush frequency must be a positive number.")
-    else:
-        flush_frequency = arguments["results_flush"]
+if "results_flush" in arguments:
+    if arguments["results_flush"]:
+        if arguments["results_flush"] <= 0:
+            raise ValueError("Flush frequency must be a positive number.")
+        else:
+            flush_frequency = arguments["results_flush"]
 
-if arguments["resulting_bif_path"]:
-    resulting_bif_path = arguments["resulting_bif_path"]
-
+if "resulting_bif_path" in arguments:
+    if arguments["resulting_bif_path"]:
+        resulting_bif_path = arguments["resulting_bif_path"]
 
 # PARAMETER PRE-PROCESSING AND ALGORITHM EXECUTION
 
