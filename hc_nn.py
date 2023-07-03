@@ -91,6 +91,7 @@ parser.add_argument("-c",
 csv_file = "asia"
 parser.add_argument("-ds",
                     "--dataset",
+                    metavar="{asia, cancer, earthquake...} or path",
                     help="Dataset used to build the DAG on. Either an already existing BNLearn Bayesian Network "
                          "(such as Asia or Andes) or the path to a CSV file may be provided. If a BNLearn Bayesian "
                          "Network is used, a dataset number (between 1 and 10) and a dataset size (usually 10000) "
@@ -112,12 +113,13 @@ parser.add_argument("-dss",
                     "-dataset_size",
                     type=int,
                     choices=[10000],
-                    help="ONLY REQUIRED IF A BNLEARN DATASET IS SPECIFIED. Number of instances of the dataset used.")
+                    help="ONLY REQUIRED IF A BNLEARN DATASET IS SPECIFIED. Size (in instances) of the dataset used.")
 
 # BIF file used for statistics - either a known BNLearn network or the path to a BIF file.
 bif_file = "asia"
 parser.add_argument("-bif",
                     "--bif",
+                    metavar="{asia, cancer, earthquake...} or path",
                     help="Bayesian Network used for DAG statistics after the hill climbing process. Either an already "
                          "existing BNLearn Bayesian Network (such as Asia or Andes) or "
                          "the path to a BIF file may be provided.")
@@ -149,6 +151,7 @@ epsilon = 0.0001
 parser.add_argument("-hce",
                     "--hillclimbing_epsilon",
                     type=float,
+                    metavar="[hce >= 0.0]",
                     help="Minimum change in score required to accept an action during Hill Climbing.")
 
 # Maximum number of iterations
@@ -156,7 +159,17 @@ max_iterations = 1e6
 parser.add_argument("-hci",
                     "--hillclimbing_iterations",
                     type=int,
+                    metavar="[hci > 0]",
                     help="Maximum number of iterations performed during Hill Climbing.")
+
+# Size of the sample used for the log likelihood
+log_likelihood_size = 1000
+parser.add_argument("-hcl",
+                    "--hillclimbing-loglikelihood",
+                    type=int,
+                    metavar="[hcl > 0]",
+                    help="ONLY USED IF A BIF FILE IS SPECIFIED. Size (in instances) of the sample used for "
+                         "log likelihood.")
 
 # Whether to wipe the cache (True) or not (False)
 wipe_cache = False
@@ -187,6 +200,7 @@ bdeu_equivalent_sample_size = 10
 parser.add_argument("-bdeus",
                     "--bdeu_sample_size",
                     type=int,
+                    metavar="[bdeus > 0]",
                     help="Equivalent sample size used for BDeu scoring.")
 
 # RESULTS LOGGING SPECIFIC ARGUMENTS
@@ -208,6 +222,7 @@ flush_frequency = 300
 parser.add_argument("-rf",
                     "--results_flush",
                     type=int,
+                    metavar="[rf > 0]",
                     help="Update frequency (in seconds) of the results log file.")
 
 # ARGUMENT PARSING #

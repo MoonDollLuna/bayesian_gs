@@ -16,6 +16,7 @@ from pgmpy.sampling import BayesianModelSampling
 from pgmpy.metrics import log_likelihood_score
 from pgmpy.readwrite.BIF import BIFWriter
 
+
 class HillClimbing(BaseAlgorithm):
     """
     `HillClimbing` implements a simple Greedy Search approach to Bayesian Network structure building.
@@ -35,7 +36,7 @@ class HillClimbing(BaseAlgorithm):
     # MAIN METHODS #
 
     def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
-                     wipe_cache=False, verbose=0, log_likelihood_size=10000):
+                     log_likelihood_size=1000, wipe_cache=False, verbose=0):
         """
         Performs Hill Climbing to find a local best DAG based on BDeU.
 
