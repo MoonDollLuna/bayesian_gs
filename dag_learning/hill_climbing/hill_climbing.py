@@ -7,6 +7,8 @@ import math
 from time import time
 import datetime
 from tqdm import tqdm
+import os
+from pathlib import Path
 
 from dag_learning import BaseAlgorithm, \
     find_legal_hillclimbing_operations, compute_average_markov_mantle, compute_smhd, compute_percentage_difference
@@ -363,8 +365,12 @@ class HillClimbing(BaseAlgorithm):
         # If a path is specified to store the resulting DAG, the DAG will be converted into BIF format and stored
         if self.dag_path:
 
+            # Ensure that the path actually exists
+            if not os.path.exists(self.dag_path):
+                Path(self.dag_path).mkdir(parents=True, exist_ok=True)
+
             # Compute the name of the file
-            full_dag_path = "{}/{}.bif".format(self.dag_path, self.dag_name)
+            full_dag_path = "{}/{}_{}.bif".format(self.dag_path, self.dag_name, initial_time)
 
             # Store the BIF
             BIFWriter(current_bn).write_bif(full_dag_path)
