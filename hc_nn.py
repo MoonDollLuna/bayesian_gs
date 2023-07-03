@@ -256,11 +256,14 @@ if "dataset_size" in arguments:
 
 if "bif" in arguments:
     if arguments["bif"]:
-        # Directly extract the BIF path from the dictionary if appropriate
+        # Directly extract the BIF path from the dictionary if appropriate,
         if arguments["bif"] in bif_paths:
             bif_file = bif_paths[arguments["bif"]]
         else:
             bif_file = arguments["bif"]
+
+        # Convert the BIF path into an actual Bayesian Network
+        bif_file = BIFReader(bif_file).get_model()
 
 if "dataset" in arguments:
     if arguments["dataset"]:
