@@ -285,7 +285,13 @@ class HillClimbing(BaseAlgorithm):
             time_taken_delta = new_time_taken - time_taken
             time_taken = new_time_taken - initial_time
 
-            action_str, (origin, destination) = action_taken
+            if action_taken:
+                action_str, (origin, destination) = action_taken
+            else:
+                # In the last iteration, no actions are taken
+                action_str = "None"
+                origin = "None"
+                destination = "None"
 
             # Print and log the required information as applicable
             self._write_iteration_data(verbose, iterations, action_str, origin, destination,
