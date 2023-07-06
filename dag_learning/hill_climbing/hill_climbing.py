@@ -344,6 +344,7 @@ class HillClimbing(BaseAlgorithm):
             sampled_data = BayesianModelSampling(self.bayesian_network).forward_sample(log_likelihood_size)
 
             # Check the log likelihood for both original and new DAG
+            # TODO - LOG LIKELIHOOD NOT WORKING WITH CREATED BAYESIAN NETWORK
             log_likelihood = log_likelihood_score(current_bn, sampled_data)
             original_log_likelihood = log_likelihood_score(self.bayesian_network, sampled_data)
             log_likelihood_diff = log_likelihood - original_log_likelihood
