@@ -186,6 +186,7 @@ if __name__ == "__main__":
     parser.add_argument("-hcv",
                         "--hillclimbing_verbosity",
                         choices=range(0, 7),
+                        type=int,
                         metavar="[0-6]",
                         help="Level of verbosity of the algorithm.")
 
