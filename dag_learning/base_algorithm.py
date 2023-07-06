@@ -55,7 +55,6 @@ class BaseAlgorithm:
         By default, uses the name of the CSV file (without the .CSV extension)
     flush_frequency: int, default=300
         Time (in seconds) between results logger flushes / how often the file is written to.
-
     **score_arguments
         Arguments to provide to the scoring method. Currently, only BDeu is available as a scoring method.
     """
