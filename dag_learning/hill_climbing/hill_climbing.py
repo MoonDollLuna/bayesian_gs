@@ -341,10 +341,12 @@ class HillClimbing(BaseAlgorithm):
 
             # Log likelihood of sampled data
             # Sample data from the original bayesian network
-            sampled_data = BayesianModelSampling(self.bayesian_network).forward_sample(log_likelihood_size)
+            sampled_data = BayesianModelSampling(self.bayesian_network).\
+                forward_sample(log_likelihood_size, show_progress=False)
 
             # Check the log likelihood for both original and new DAG
             # TODO - LOG LIKELIHOOD NOT WORKING WITH CREATED BAYESIAN NETWORK
+            # TODO - MAKE INDEPENDENT LOG LIKELIHOOD METHOD WITH LAPLACE CORRECTION
             log_likelihood = log_likelihood_score(current_bn, sampled_data)
             original_log_likelihood = log_likelihood_score(self.bayesian_network, sampled_data)
             log_likelihood_diff = log_likelihood - original_log_likelihood

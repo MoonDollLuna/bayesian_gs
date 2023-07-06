@@ -533,9 +533,6 @@ class ExtendedDAG(DAG):
         bn.add_nodes_from(list(self.nodes))
         bn.add_edges_from(list(self.edges))
 
-        print(state_names["HISTORY"])
-        print(dataset["HISTORY"].unique())
-
         # If a dataset is specified, estimate the CPDs
         if dataset is not None:
             bn.fit(dataset, state_names=state_names)
