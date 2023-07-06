@@ -160,14 +160,14 @@ class HillClimbing(BaseAlgorithm):
             # Compute all possible actions for the current DAG
             actions = find_legal_hillclimbing_operations(dag)
 
+            # If necessary, print the header
+            if verbose == 1:
+                print("= ITERATION {}".format(iterations + 1))
+
             # Loop through all actions (using TQDM)
             for action, (X, Y) in tqdm(actions,
                                        desc=("= ITERATION {}: ".format(iterations + 1)),
                                        disable=(verbose < 2)):
-
-                # If necessary, print the header
-                if verbose == 1:
-                    print("= ITERATION {}".format(iterations + 1))
 
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
@@ -312,7 +312,7 @@ class HillClimbing(BaseAlgorithm):
 
         # Create a bayesian network based on the currently learned DAG with the dataset used
         # and for log likelihood scoring
-        current_bn = dag.to_bayesian_network(self.dataframe)
+        current_bn = dag.to_bayesian_network(self.dataframe, self.bayesian_network.states)
 
         # BDEU
         empty_bdeu = self.local_scorer.global_score(empty_dag)

@@ -104,7 +104,7 @@ class BaseAlgorithm:
             # If a path to a CSV file is given, read the data from it and extract the input file name
             if isinstance(data, str):
                 output_file_name = os.path.splitext(os.path.basename(data))[0]
-                data = read_csv(data)
+                data = read_csv(data, dtype=str)
 
             # Convert the data into a numpy array and extract the node names
             self.data = data.to_numpy(dtype='<U8')

@@ -511,14 +511,17 @@ class ExtendedDAG(DAG):
 
     # BAYESIAN NETWORK METHODS #
 
-    def to_bayesian_network(self, dataset=None):
+    def to_bayesian_network(self, dataset=None, state_names=None):
         """
-        Converts the current Extended DAG into a Bayesian Network. If a dataset is specified, CPDs are estimated too.
+        Converts the current Extended DAG into a Bayesian Network. If a dataset is specified, CPDs are estimated too
+        (using the original Bayesian Networks states if specified).
 
         Parameters
         ----------
         dataset: DataFrame, optional
             Dataset to estimate CPDs from
+        state_names: dict
+            State names to use for the CPD computation
 
         Returns
         -------
@@ -530,9 +533,12 @@ class ExtendedDAG(DAG):
         bn.add_nodes_from(list(self.nodes))
         bn.add_edges_from(list(self.edges))
 
+        print(state_names["HISTORY"])
+        print(dataset["HISTORY"].unique())
+
         # If a dataset is specified, estimate the CPDs
         if dataset is not None:
-            bn.fit(dataset)
+            bn.fit(dataset, state_names=state_names)
 
         return bn
 
