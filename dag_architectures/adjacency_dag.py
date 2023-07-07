@@ -369,4 +369,3 @@ class AdjacencyDAG(ExtendedDAG):
         dag.add_edges_from(list(bayesian_network.edges))
 
         return dag
-

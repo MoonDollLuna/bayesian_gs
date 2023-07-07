@@ -6,7 +6,7 @@
 import networkx as nx
 from pgmpy.base import DAG
 from pgmpy.models.BayesianNetwork import BayesianNetwork
-from pandas import DataFrame
+from pgmpy.estimators.BayesianEstimator import BayesianEstimator
 
 
 class ExtendedDAG(DAG):
@@ -535,7 +535,9 @@ class ExtendedDAG(DAG):
 
         # If a dataset is specified, estimate the CPDs
         if dataset is not None:
-            bn.fit(dataset, state_names=state_names)
+            # Laplace Smoothing is used to avoid CPDs with values of 0
+            bn.fit(dataset, estimator=BayesianEstimator, prior_type="dirichlet", pseudo_counts=1,
+                   state_names=state_names)
 
         return bn
 
