@@ -232,7 +232,7 @@ if __name__ == "__main__":
     # Resulting BIF path - Path where the resulting BIF file will be stored in
     resulting_bif_path = None
     parser.add_argument("-rb",
-                        "--resulting_bif_path",
+                        "--results_bif",
                         help="If specified, path where the resulting BIF file (resulting DAG plus estimated CPDs) will "
                              "be stored. NOTE: The actual file name should NOT be specified.")
 
@@ -351,9 +351,9 @@ if __name__ == "__main__":
             else:
                 flush_frequency = arguments["results_flush"]
 
-    if "resulting_bif_path" in arguments:
-        if arguments["resulting_bif_path"]:
-            resulting_bif_path = arguments["resulting_bif_path"]
+    if "results_bif" in arguments:
+        if arguments["results_bif"]:
+            resulting_bif_path = arguments["results_bif"]
 
     # PARAMETER PRE-PROCESSING AND ALGORITHM EXECUTION
 
