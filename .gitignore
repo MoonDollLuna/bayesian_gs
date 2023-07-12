@@ -133,3 +133,4 @@ output/
 *.xml
 
 .idea/
+arguments_windows.txt

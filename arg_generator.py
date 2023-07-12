@@ -114,5 +114,5 @@ with open("arguments_windows.txt", "w") as file:
                                                                     algorithm)}
 
         # Store the JSON dict within the file
-        json_string = "'{}'".format(json.dumps(json_dict))
+        json_string = "'{}'\n".format(json.dumps(json_dict))
         file.write(json_string)
