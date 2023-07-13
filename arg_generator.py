@@ -10,6 +10,12 @@ import json
 from itertools import product
 
 # ARGUMENT DECLARATION #
+
+# CHANGE THIS TO MODIFY THE TARGET OS
+#   - windows
+#   - linux
+target_system = "windows"
+
 # Helper structures #
 
 # Size of each network
@@ -37,6 +43,8 @@ network_sizes = {"asia": "small",  # SMALL
                  "munin2": "massive",
                  "munin3": "massive",
                  "munin4": "massive"}
+
+# WINDOWS PATHS #
 
 # BIF file path, where {} represents:
 #   1- Network size
@@ -86,7 +94,7 @@ scoring_methods = ["bdeu"]
 
 # FILE CREATION AND JSON CREATION#
 # File is directly created and handled using the "with" Python interface
-with open("arguments_windows.txt", "w") as file:
+with open("arguments_{}.txt".format(target_system), "w") as file:
 
     # Generate all possible combinations of arguments
     arguments_lists = [network_names, dataset_ids, dataset_sizes, algorithms, scoring_methods]
@@ -113,6 +121,14 @@ with open("arguments_windows.txt", "w") as file:
                                                                     network_size,
                                                                     algorithm)}
 
-        # Store the JSON dict within the file
-        json_string = "'{}'\n".format(json.dumps(json_dict))
+        # Store the JSON dict within the file, using a format appropriate for the OS
+        if target_system == "windows":
+            # Write the string and escape all characters
+            json_string = json.dumps(json_dict)
+            json_string = "\"{}\"\n".format(json_string.replace('"', '\\"'))
+        elif target_system == "linux":
+            # Whole string can be escaped using ''
+            json_string = "'{}'\n".format(json.dumps(json_dict))
+
+        # Write the JSON arguments into the file
         file.write(json_string)
