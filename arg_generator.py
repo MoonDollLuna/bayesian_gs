@@ -14,7 +14,7 @@ from itertools import product
 # CHANGE THIS TO MODIFY THE TARGET OS
 #   - windows
 #   - linux
-target_system = "windows"
+target_system = "linux"
 
 # Helper structures #
 

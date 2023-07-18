@@ -132,5 +132,5 @@ dmypy.json
 output/
 *.xml
 
-.idea/
-arguments_windows.txt
+.idea/*
+
