@@ -6,15 +6,9 @@
 # OS that will be used) and stores them as JSON strings within a file.
 
 # IMPORTS #
-import json
 from itertools import product
 
 # ARGUMENT DECLARATION #
-
-# CHANGE THIS TO MODIFY THE TARGET OS
-#   - windows
-#   - linux
-target_system = "linux"
 
 # Helper structures #
 
@@ -94,7 +88,7 @@ scoring_methods = ["bdeu"]
 
 # FILE CREATION AND JSON CREATION#
 # File is directly created and handled using the "with" Python interface
-with open("arguments_{}.txt".format(target_system), "w") as file:
+with open("experiment_list.txt", "w") as file:
 
     # Generate all possible combinations of arguments
     arguments_lists = [network_names, dataset_ids, dataset_sizes, algorithms, scoring_methods]
@@ -104,31 +98,15 @@ with open("arguments_{}.txt".format(target_system), "w") as file:
     for network_name, dataset_id, dataset_size, algorithm, scoring_method in arguments_combinations:
 
         network_size = network_sizes[network_name]
-        json_dict = {"dataset": csv_file_path_windows.format(network_size,
-                                                             network_name,
-                                                             dataset_size,
-                                                             network_name,
-                                                             dataset_size,
-                                                             dataset_id),
-                     "bif": bif_file_path_windows.format(network_size,
-                                                         network_name),
-                     "algorithm": algorithm,
-                     "score": scoring_method,
-                     "results_path": results_log_path_windows.format(network_name,
-                                                                     network_size,
-                                                                     algorithm),
-                     "results_bif": results_bif_path_windows.format(network_name,
-                                                                    network_size,
-                                                                    algorithm)}
 
-        # Store the JSON dict within the file, using a format appropriate for the OS
-        if target_system == "windows":
-            # Write the string and escape all characters
-            json_string = json.dumps(json_dict)
-            json_string = "\"{}\"\n".format(json_string.replace('"', '\\"'))
-        elif target_system == "linux":
-            # Whole string can be escaped using ''
-            json_string = "'{}'\n".format(json.dumps(json_dict))
+        experiment_string = "--dataset {} --bif {} --algorithm {} --score {} --results_path {} --results_bif {}\n".format(
+            csv_file_path_windows.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id),
+            bif_file_path_windows.format(network_size, network_name),
+            algorithm,
+            scoring_method,
+            results_log_path_windows.format(network_name, network_size, algorithm),
+            results_bif_path_windows.format(network_name, network_size, algorithm)
+        )
 
         # Write the JSON arguments into the file
-        file.write(json_string)
+        file.write(experiment_string)
