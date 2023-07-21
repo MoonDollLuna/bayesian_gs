@@ -104,8 +104,8 @@ with open("experiment_list.txt", "w") as file:
             bif_file_path_windows.format(network_size, network_name),
             algorithm,
             scoring_method,
-            results_log_path_windows.format(network_name, network_size, algorithm),
-            results_bif_path_windows.format(network_name, network_size, algorithm)
+            results_log_path_windows.format(network_size, network_name, algorithm),
+            results_bif_path_windows.format(network_size, network_name, algorithm)
         )
 
         # Write the JSON arguments into the file
