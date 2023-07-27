@@ -714,6 +714,12 @@ class HillClimbing(BaseAlgorithm):
             print("#\t * Score improvement: {}".format(score_improvement))
             print("#\t * Score improvement (%): {}%\n".format(score_improvement_percent))
 
+            # If a bayesian network exists, also write the score for the original network
+            if self.bayesian_network:
+                print("#\t * Score of the original graph: {}".format(original_score))
+                print("#\t * Score difference: {}".format(original_score_difference))
+                print("#\t * Score difference (%): {}%\n".format(original_score_difference_percent))
+
             print("# - Time taken: {} secs\n".format(time_taken))
 
             print("# - Total operations performed: {}".format(total_operations))
