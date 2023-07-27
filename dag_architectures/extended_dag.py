@@ -560,3 +560,17 @@ class ExtendedDAG(DAG):
 
         return dag
 
+    # VISUALIZATION METHODS #
+
+    def __str__(self):
+        """
+        Returns a representation of all nodes and parents of the graph, with format:
+
+        [<node> | <parent 1>, <parent 2>, ...<parent n>]
+
+        separated by commas.
+        """
+
+        # List comprehension builds the list of node - parents with the expected format,
+        # later joined using a comma
+        return ", ".join(["[{} | {}]".format(node, str(self.get_parents(node))[1:-1]) for node in list(self.nodes)])

@@ -64,9 +64,9 @@ class HillClimbing(BaseAlgorithm):
                 - 2: Progress bar for each iteration is printed
                 - 3: Action taken for each step is printed
                 - 4: Intermediate results for each step are printed
-                - 5: Image of the final graph is printed
+                - 5: Graph is printed (as a string)
                 - 6: DAG is directly printed
-        log_likelihood_size: int, default=10000
+        log_likelihood_size: int, default=1000
             Size of the data sample generated for the log likelihood score
 
         Returns
@@ -356,7 +356,7 @@ class HillClimbing(BaseAlgorithm):
             log_likelihood_percent = compute_percentage_difference(original_log_likelihood, log_likelihood)
 
             # Print the results
-            self._write_final_results(verbose, best_score, empty_score, score_diff, score_percent,
+            self._write_final_results(dag, verbose, best_score, empty_score, score_diff, score_percent,
                                       total_actions, add_operations, remove_operations, invert_operations,
                                       computed_operations, total_operations, time_taken, average_markov,
                                       original_markov, average_markov_diff, average_markov_percent,
@@ -366,13 +366,9 @@ class HillClimbing(BaseAlgorithm):
 
         # If no bayesian network is provided, print the data without its related statistics
         else:
-            self._write_final_results(verbose, best_score, empty_score, score_diff, score_percent,
+            self._write_final_results(dag, verbose, best_score, empty_score, score_diff, score_percent,
                                       total_actions, add_operations, remove_operations, invert_operations,
                                       computed_operations, total_operations, time_taken, average_markov)
-
-        # If the verbosity is high enough, print the final DAG
-        if verbose >= 5:
-            dag.to_daft().show()
 
         # If a path is specified to store the resulting DAG, the DAG will be converted into BIF format and stored
         if self.dag_path:
@@ -585,7 +581,7 @@ class HillClimbing(BaseAlgorithm):
 
         # Verbosity 6 checks (DAG nodes and edges) is purely for debug and is printed outside of this method
 
-    def _write_final_results(self, verbose, score, empty_score, score_improvement, score_improvement_percent,
+    def _write_final_results(self, dag, verbose, score, empty_score, score_improvement, score_improvement_percent,
                              total_operations, add_operations, remove_operations, invert_operations,
                              computed_scores, total_scores, time_taken,
                              markov, original_markov=None, markov_difference=None, markov_difference_percent=None,
@@ -601,6 +597,8 @@ class HillClimbing(BaseAlgorithm):
 
         Parameters
         ----------
+        dag: ExtendedDAG
+            Final DAG obtained
         verbose: int
             Verbosity of the program, as specified in "estimate_dag"
         score: float
@@ -705,45 +703,60 @@ class HillClimbing(BaseAlgorithm):
             self.results_logger.write_line("\n")
             self.results_logger.write_line("########################################\n")
 
+            # Format the DAG edges and print them
+            dag_edges = "# " + str(dag).replace(", ", "\n# ")
+            self.results_logger.write_line("########################################\n")
+            self.results_logger.write_line("# FINAL DAG OBTAINED \n\n")
+            self.results_logger.write_line(dag_edges)
+            self.results_logger.write_line("\n")
+            self.results_logger.write_line("########################################\n")
+
         # If the verbosity is appropriate (1 or above), print the values on the console
         if verbose >= 1:
             print("\n FINAL RESULTS \n\n")
 
-            print("# - Final score: {}".format(score))
-            print("#\t * Score of an empty graph: {}".format(empty_score))
-            print("#\t * Score improvement: {}".format(score_improvement))
-            print("#\t * Score improvement (%): {}%\n".format(score_improvement_percent))
+            print("- Final score: {}".format(score))
+            print("\t * Score of an empty graph: {}".format(empty_score))
+            print("\t * Score improvement: {}".format(score_improvement))
+            print("\t * Score improvement (%): {}%\n".format(score_improvement_percent))
 
             # If a bayesian network exists, also write the score for the original network
             if self.bayesian_network:
-                print("#\t * Score of the original graph: {}".format(original_score))
-                print("#\t * Score difference: {}".format(original_score_difference))
-                print("#\t * Score difference (%): {}%\n".format(original_score_difference_percent))
+                print("\t * Score of the original graph: {}".format(original_score))
+                print("\t * Score difference: {}".format(original_score_difference))
+                print("\t * Score difference (%): {}%\n".format(original_score_difference_percent))
 
-            print("# - Time taken: {} secs\n".format(time_taken))
+            print("- Time taken: {} secs\n".format(time_taken))
 
-            print("# - Total operations performed: {}".format(total_operations))
-            print("#\t * Additions: {}".format(add_operations))
-            print("#\t * Removals: {}".format(remove_operations))
-            print("#\t * Inversions: {}\n".format(invert_operations))
+            print("- Total operations performed: {}".format(total_operations))
+            print("\t * Additions: {}".format(add_operations))
+            print("\t * Removals: {}".format(remove_operations))
+            print("\t * Inversions: {}\n".format(invert_operations))
 
-            print("# - Computed scores: {}".format(computed_scores))
-            print("# - Total scores (including cache lookups): {}\n".format(total_scores))
+            print("- Computed scores: {}".format(computed_scores))
+            print("- Total scores (including cache lookups): {}\n".format(total_scores))
 
-            print("# - Average Markov blanket size: {}".format(markov))
+            print("- Average Markov blanket size: {}".format(markov))
 
             # If a bayesian network exists, also write additional results
             if self.bayesian_network:
-                print("#\t * Original average Markov blanket size: {}".format(original_markov))
-                print("#\t * Markov difference: {}".format(markov_difference))
-                print("#\t * Markov difference (%): {}%\n".format(markov_difference_percent))
+                print("\t * Original average Markov blanket size: {}".format(original_markov))
+                print("\t * Markov difference: {}".format(markov_difference))
+                print("\t * Markov difference (%): {}%\n".format(markov_difference_percent))
 
-                print("# - SMHD: {}".format(smhd))
-                print("#\t * Empty graph SMHD: {}".format(empty_smhd))
-                print("#\t * SMHD difference: {}".format(smhd_difference))
-                print("#\t * SMHD difference (%): {}%".format(smhd_difference_percent))
+                print("- SMHD: {}".format(smhd))
+                print("\t * Empty graph SMHD: {}".format(empty_smhd))
+                print("\t * SMHD difference: {}".format(smhd_difference))
+                print("\t * SMHD difference (%): {}%".format(smhd_difference_percent))
 
-                print("# - Log likelihood: {}".format(log))
-                print("#\t * Original model log likelihood: {}".format(original_log))
-                print("#\t * Log likelihood difference: {}".format(log_difference))
-                print("#\t * Log likelihood difference (%): {}%".format(log_difference_percent))
+                print("- Log likelihood: {}".format(log))
+                print("\t * Original model log likelihood: {}".format(original_log))
+                print("\t * Log likelihood difference: {}".format(log_difference))
+                print("\t * Log likelihood difference (%): {}%\n".format(log_difference_percent))
+
+        # If the verbosity is appropriate (5 or above), print the edges on the console
+        if verbose >= 5:
+            print("\n FINAL NETWORK EDGES \n")
+
+            dag_edges = "- " + str(dag).replace(", ", "\n- ")
+            print(dag_edges)
