@@ -572,5 +572,8 @@ class ExtendedDAG(DAG):
         """
 
         # List comprehension builds the list of node - parents with the expected format,
-        # later joined using a comma
-        return ", ".join(["[{} | {}]".format(node, str(self.get_parents(node))[1:-1]) for node in list(self.nodes)])
+        # later joined using a dot comma
+        return "; ".join(["['{}' | {}]".format(node, str(self.get_parents(node))[1:-1])
+                          if self.get_parents(node)
+                          else "['{}']".format(node)
+                          for node in list(self.nodes)])

@@ -362,7 +362,8 @@ class HillClimbing(BaseAlgorithm):
                                       original_markov, average_markov_diff, average_markov_percent,
                                       smhd, empty_smhd, smhd_diff, smhd_percent,
                                       log_likelihood, original_log_likelihood,
-                                      log_likelihood_diff, log_likelihood_percent)
+                                      log_likelihood_diff, log_likelihood_percent,
+                                      original_score, original_score_diff, original_score_percent)
 
         # If no bayesian network is provided, print the data without its related statistics
         else:
@@ -704,7 +705,7 @@ class HillClimbing(BaseAlgorithm):
             self.results_logger.write_line("########################################\n")
 
             # Format the DAG edges and print them
-            dag_edges = "# " + str(dag).replace(", ", "\n# ")
+            dag_edges = "# " + str(dag).replace("; ", "\n# ")
             self.results_logger.write_line("########################################\n")
             self.results_logger.write_line("# FINAL DAG OBTAINED \n\n")
             self.results_logger.write_line(dag_edges)
@@ -758,5 +759,5 @@ class HillClimbing(BaseAlgorithm):
         if verbose >= 5:
             print("\n FINAL NETWORK EDGES \n")
 
-            dag_edges = "- " + str(dag).replace(", ", "\n- ")
+            dag_edges = "- " + str(dag).replace("; ", "\n- ")
             print(dag_edges)
