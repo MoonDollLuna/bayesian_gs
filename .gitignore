@@ -130,6 +130,7 @@ dmypy.json
 
 # Outputs
 output/
+output_old/
 *.xml
 
 .idea/*

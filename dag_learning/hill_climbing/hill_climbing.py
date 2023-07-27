@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 from dag_learning import BaseAlgorithm, \
-    find_legal_hillclimbing_operations, compute_average_markov_mantle, compute_smhd, compute_percentage_difference
+    find_legal_hillclimbing_operations, compute_average_markov_blanket, compute_smhd, compute_percentage_difference
 from dag_architectures import ExtendedDAG
 
 from pgmpy.sampling import BayesianModelSampling
@@ -26,10 +26,10 @@ class HillClimbing(BaseAlgorithm):
     The algorithm works in a loop by trying all possible actions over the existing nodes (either adding
     a new edge to the DAG or removing or inverting an already existing one).
 
-    These actions are evaluated by using a total BDeU score for the Bayesian Network based on the
-    data provided, choosing the action that provides the biggest increase in BDeU score.
+    These actions are evaluated by using a total score metric for the Bayesian Network based on the
+    data provided, choosing the action that provides the biggest increase in local score.
 
-    This loop is continued until no action improves the BDeU score, at which point a fully constructed
+    This loop is continued until no action improves the current score, at which point a fully constructed
     Bayesian Network based on the existing nodes and data is provided.
 
     This algorithm serves as a baseline, to which all other algorithms implemented will be compared to.
@@ -40,7 +40,7 @@ class HillClimbing(BaseAlgorithm):
     def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
                      log_likelihood_size=1000, wipe_cache=False, verbose=0):
         """
-        Performs Hill Climbing to find a local best DAG based on BDeU.
+        Performs Hill Climbing to find a local best DAG based on the score metric specified in the constructor.
 
         Note that the found DAG may not be optimal, but good enough.
 
@@ -51,12 +51,12 @@ class HillClimbing(BaseAlgorithm):
         starting_dag: ExtendedDAG, optional
             Starting DAG. If not specified, an empty DAG is used.
         epsilon: float
-            BDeU threshold. If the BDeU does not improve above the specified threshold,
+            Score threshold. If the score does not improve above the specified threshold,
             the algorithm stops
         max_iterations: int
             Maximum number of iterations to perform.
         wipe_cache: bool
-            Whether the BDeU cache should be wiped or not
+            Whether the local score cache should be wiped or not
         verbose: int, default = 0
             Verbosity of the program, where:
                 - 0: No information is printed
@@ -83,7 +83,7 @@ class HillClimbing(BaseAlgorithm):
         # Iterations performed
         iterations: int = 0
 
-        # Total operations checked and operations that needed new BDeU calculations
+        # Total operations checked and operations that needed new local score calculations
         total_operations: int = 0
         computed_operations: int = 0
 
@@ -96,12 +96,12 @@ class HillClimbing(BaseAlgorithm):
         initial_time: float = time()
         time_taken: float = 0.0
 
-        # BDeU metrics #
-        # Best BDeu score
-        best_bdeu: float = 0.0
+        # Score metrics #
+        # Best score
+        best_score: float = 0.0
 
-        # Delta BDeU (change per iteration)
-        bdeu_delta: float = math.inf
+        # Delta score (change per iteration)
+        score_delta: float = math.inf
 
         # PARAMETER INITIALIZATION #
 
@@ -111,7 +111,7 @@ class HillClimbing(BaseAlgorithm):
         else:
             dag = ExtendedDAG(self.nodes)
 
-        # If necessary, wipe out the BDeU cache
+        # If necessary, wipe out the local score cache
         if wipe_cache:
             self.score_cache.wipe_cache()
 
@@ -122,12 +122,12 @@ class HillClimbing(BaseAlgorithm):
             self._write_header(initial_time)
             self._write_column_names()
 
-        # Compute the initial BDeU score
+        # Compute the initial score
         # It is assumed that none of these scores will have been computed before
-        for node in tqdm(list(dag.nodes), desc="Initial BDeU scoring", disable=(verbose < 4)):
+        for node in tqdm(list(dag.nodes), desc="Initial scoring", disable=(verbose < 4)):
 
-            # Compute the BDeU for each node
-            best_bdeu += self.local_scorer.local_score(node, dag.get_parents(node))
+            # Compute the score for each node
+            best_score += self.local_scorer.local_score(node, dag.get_parents(node))
 
             # Update the metrics
             computed_operations += 1
@@ -136,21 +136,21 @@ class HillClimbing(BaseAlgorithm):
         # Log the initial iteration (iteration 0) - this data should not be printed on screen
         initial_time_taken = time() - initial_time
         self._write_iteration_data(0, iterations, "None", "None", "None",
-                                   best_bdeu, best_bdeu, computed_operations, computed_operations,
+                                   best_score, best_score, computed_operations, computed_operations,
                                    total_operations, total_operations, initial_time_taken, initial_time_taken)
 
-        # If necessary, output the initial BDeU score
+        # If necessary, output the initial score
         if verbose >= 4:
-            print("Initial BDeU score: {}".format(best_bdeu))
+            print("Initial score: {}".format(best_score))
 
         # Run the loop until:
-        #   - The BDeU score improvement is not above the tolerance threshold
+        #   - The score improvement is not above the tolerance threshold
         #   - The maximum number of iterations is reached
-        while iterations < max_iterations and bdeu_delta > epsilon:
+        while iterations < max_iterations and score_delta > epsilon:
 
             # Reset the delta and specify the currently taken action
-            bdeu_delta = 0
-            current_best_bdeu = best_bdeu
+            score_delta = 0
+            current_best_score = best_score
             action_taken = None
 
             # Create delta variables to store change in values
@@ -177,11 +177,11 @@ class HillClimbing(BaseAlgorithm):
                     original_parents_list = dag.get_parents(Y)
                     new_parents_list = original_parents_list + [X]
 
-                    # Compute the BDeU delta and the possible new BDeU score
-                    current_bdeu_delta, local_total_operations, local_operations_computed = \
-                        self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
+                    # Compute the score delta and the possible new score
+                    current_score_delta, local_total_operations, local_operations_computed = \
+                        self._compute_score_delta(Y, original_parents_list, new_parents_list)
 
-                    current_bdeu = best_bdeu + current_bdeu_delta
+                    current_score = best_score + current_score_delta
                     computed_operations_delta = local_operations_computed
                     total_operations_delta = local_total_operations
 
@@ -189,11 +189,11 @@ class HillClimbing(BaseAlgorithm):
                     total_operations += local_total_operations
                     computed_operations += local_operations_computed
 
-                    # If the action improves the BDeU, store it and all required information
-                    if current_bdeu > current_best_bdeu:
-                        # Best BDeU and delta
-                        current_best_bdeu = current_bdeu
-                        bdeu_delta = current_bdeu_delta
+                    # If the action improves the score, store it and all required information
+                    if current_score > current_best_score:
+                        # Best score and delta
+                        current_best_score = current_score
+                        score_delta = current_score_delta
                         action_taken = (action, (X, Y))
 
                 # Removal
@@ -203,11 +203,11 @@ class HillClimbing(BaseAlgorithm):
                     original_parents_list = dag.get_parents(Y)
                     new_parents_list = original_parents_list[:].remove(X)
 
-                    # Compute the BDeU delta and the possible new BDeU score
-                    current_bdeu_delta, local_total_operations, local_operations_computed = \
-                        self._compute_bdeu_delta(Y, original_parents_list, new_parents_list)
+                    # Compute the score delta and the possible new score
+                    current_score_delta, local_total_operations, local_operations_computed = \
+                        self._compute_score_delta(Y, original_parents_list, new_parents_list)
 
-                    current_bdeu = best_bdeu + current_bdeu_delta
+                    current_score = best_score + current_score_delta
                     computed_operations_delta = local_operations_computed
                     total_operations_delta = local_total_operations
 
@@ -215,11 +215,11 @@ class HillClimbing(BaseAlgorithm):
                     total_operations += local_total_operations
                     computed_operations += local_operations_computed
 
-                    # If the action improves the BDeU, store it and all required information
-                    if current_bdeu > current_best_bdeu:
-                        # Best BDeU and delta
-                        current_best_bdeu = current_bdeu
-                        bdeu_delta = current_bdeu_delta
+                    # If the action improves the score, store it and all required information
+                    if current_score > current_best_score:
+                        # Best score and delta
+                        current_best_score = current_score
+                        score_delta = current_score_delta
                         action_taken = (action, (X, Y))
 
                 # Inversion
@@ -234,14 +234,14 @@ class HillClimbing(BaseAlgorithm):
                     original_y_parents_list = dag.get_parents(Y)
                     new_y_parents_list = original_y_parents_list[:].remove(X)
 
-                    # Compute the BDeU deltas
-                    current_x_bdeu_delta, local_total_x_operations, local_x_operations_computed = \
-                        self._compute_bdeu_delta(X, original_x_parents_list, new_x_parents_list)
-                    current_y_bdeu_delta, local_total_y_operations, local_y_operations_computed = \
-                        self._compute_bdeu_delta(Y, original_y_parents_list, new_y_parents_list)
+                    # Compute the score deltas
+                    current_x_score_delta, local_total_x_operations, local_x_operations_computed = \
+                        self._compute_score_delta(X, original_x_parents_list, new_x_parents_list)
+                    current_y_spore_delta, local_total_y_operations, local_y_operations_computed = \
+                        self._compute_score_delta(Y, original_y_parents_list, new_y_parents_list)
 
-                    current_bdeu_delta = current_x_bdeu_delta + current_y_bdeu_delta
-                    current_bdeu = best_bdeu + current_bdeu_delta
+                    current_score_delta = current_x_score_delta + current_y_spore_delta
+                    current_score = best_score + current_score_delta
                     computed_operations_delta = local_x_operations_computed + local_y_operations_computed
                     total_operations_delta = local_total_x_operations + local_total_y_operations
 
@@ -249,11 +249,11 @@ class HillClimbing(BaseAlgorithm):
                     total_operations += local_total_x_operations + local_total_y_operations
                     computed_operations += local_x_operations_computed + local_y_operations_computed
 
-                    # If the action improves the BDeU, store it and all required information
-                    if current_bdeu > current_best_bdeu:
-                        # Best BDeU and delta
-                        current_best_bdeu = current_bdeu
-                        bdeu_delta = current_bdeu_delta
+                    # If the action improves the score, store it and all required information
+                    if current_score > current_best_score:
+                        # Best score and delta
+                        current_best_score = current_score
+                        score_delta = current_score_delta
                         action_taken = (action, (X, Y))
 
             # ALL OPERATIONS TRIED
@@ -274,8 +274,8 @@ class HillClimbing(BaseAlgorithm):
                     dag.invert_edge(X, Y)
                     invert_operations += 1
 
-                # Store the best dag_scoring
-                best_bdeu = current_best_bdeu
+                # Store the best score
+                best_score = current_best_score
 
             # Update the metrics
 
@@ -295,7 +295,7 @@ class HillClimbing(BaseAlgorithm):
 
             # Print and log the required information as applicable
             self._write_iteration_data(verbose, iterations, action_str, origin, destination,
-                                       best_bdeu, bdeu_delta, computed_operations, computed_operations_delta,
+                                       best_score, score_delta, computed_operations, computed_operations_delta,
                                        total_operations, total_operations_delta, time_taken, time_taken_delta)
 
             # If necessary (debugging purposes), print the full list of nodes and edges
@@ -314,22 +314,27 @@ class HillClimbing(BaseAlgorithm):
         # and for log likelihood scoring
         current_bn = dag.to_bayesian_network(self.dataframe, self.bayesian_network.states)
 
-        # BDEU
-        empty_bdeu = self.local_scorer.global_score(empty_dag)
-        bdeu_diff = best_bdeu - empty_bdeu
-        bdeu_percent = compute_percentage_difference(empty_bdeu, best_bdeu)
+        # Local score
+        empty_score = self.local_scorer.global_score(empty_dag)
+        score_diff = best_score - empty_score
+        score_percent = compute_percentage_difference(empty_score, best_score)
 
         # Total actions
         total_actions = add_operations + remove_operations + invert_operations
 
-        # Average Markov mantle
-        average_markov = compute_average_markov_mantle(dag)
+        # Average Markov blanket
+        average_markov = compute_average_markov_blanket(dag)
 
         # The following metrics require an original DAG or Bayesian Network as an argument
         if self.bayesian_network is not None:
 
-            # Average Markov mantle difference
-            original_markov = compute_average_markov_mantle(self.bayesian_network)
+            # Score of the original bayesian network
+            original_score = self.local_scorer.global_score(self.bayesian_network)
+            original_score_diff = best_score - empty_score
+            original_score_percent = compute_percentage_difference(original_score, best_score)
+
+            # Average Markov blanket difference
+            original_markov = compute_average_markov_blanket(self.bayesian_network)
             average_markov_diff = average_markov - original_markov
             average_markov_percent = compute_percentage_difference(original_markov, average_markov)
 
@@ -351,7 +356,7 @@ class HillClimbing(BaseAlgorithm):
             log_likelihood_percent = compute_percentage_difference(original_log_likelihood, log_likelihood)
 
             # Print the results
-            self._write_final_results(verbose, best_bdeu, empty_bdeu, bdeu_diff, bdeu_percent,
+            self._write_final_results(verbose, best_score, empty_score, score_diff, score_percent,
                                       total_actions, add_operations, remove_operations, invert_operations,
                                       computed_operations, total_operations, time_taken, average_markov,
                                       original_markov, average_markov_diff, average_markov_percent,
@@ -361,7 +366,7 @@ class HillClimbing(BaseAlgorithm):
 
         # If no bayesian network is provided, print the data without its related statistics
         else:
-            self._write_final_results(verbose, best_bdeu, empty_bdeu, bdeu_diff, bdeu_percent,
+            self._write_final_results(verbose, best_score, empty_score, score_diff, score_percent,
                                       total_actions, add_operations, remove_operations, invert_operations,
                                       computed_operations, total_operations, time_taken, average_markov)
 
@@ -386,13 +391,13 @@ class HillClimbing(BaseAlgorithm):
 
     # AUXILIARY METHODS #
 
-    def _compute_bdeu_delta(self, node, original_parents, new_parents):
+    def _compute_score_delta(self, node, original_parents, new_parents):
         """
         Given a node and the original and new set of parents (after an operation to add, remove
-        or invert and edge), computes the difference in BDeU score between the new and old set of parents.
+        or invert and edge), computes the difference in local score between the new and old set of parents.
 
         In addition, returns the total number of checks and the number of checks that required a
-        new BDeU score computation.
+        new local score computation.
 
         Parameters
         ----------
@@ -413,39 +418,39 @@ class HillClimbing(BaseAlgorithm):
         computed_operations = 0
 
         # ORIGINAL PARENTS
-        # Check if the BDeU score already exists
+        # Check if the local score already exists
         if self.score_cache.has_score(node, original_parents):
-            # BDeU score exists: retrieve it
-            original_bdeu = self.score_cache.get_local_score(node, original_parents)
+            # Local score exists: retrieve it
+            original_score = self.score_cache.get_local_score(node, original_parents)
 
             operations += 1
         else:
-            # BDeU score does not exist: compute it
-            original_bdeu = self.local_scorer.local_score(node, original_parents)
-            self.score_cache.insert_local_score(node, original_parents, original_bdeu)
+            # Local score does not exist: compute it
+            original_score = self.local_scorer.local_score(node, original_parents)
+            self.score_cache.insert_local_score(node, original_parents, original_score)
 
             operations += 1
             computed_operations += 1
 
         # NEW PARENTS
-        # Check if the BDeU score already exists
+        # Check if the local score already exists
         if self.score_cache.has_score(node, new_parents):
-            # BDeU score exists: retrieve it
-            new_bdeu = self.score_cache.get_local_score(node, new_parents)
+            # Local score exists: retrieve it
+            new_score = self.score_cache.get_local_score(node, new_parents)
 
             operations += 1
         else:
-            # BDeU score does not exist: compute it
-            new_bdeu = self.local_scorer.local_score(node, new_parents)
-            self.score_cache.insert_local_score(node, new_parents, new_bdeu)
+            # Local score does not exist: compute it
+            new_score = self.local_scorer.local_score(node, new_parents)
+            self.score_cache.insert_local_score(node, new_parents, new_score)
 
             operations += 1
             computed_operations += 1
 
-        # Compute the BDeU delta
-        bdeu_delta = new_bdeu - original_bdeu
+        # Compute the local score delta
+        score_delta = new_score - original_score
 
-        return bdeu_delta, operations, computed_operations
+        return score_delta, operations, computed_operations
 
     # LOGGING METHODS #
 
@@ -469,7 +474,7 @@ class HillClimbing(BaseAlgorithm):
         # Write the experiment info (hyperparameters)
         self.results_logger.write_line("# EXPERIMENT ###########################\n\n")
         self.results_logger.write_line("# * Algorithm used: HillClimbing\n")
-        self.results_logger.write_line("#\t - Score method used: BDeu\n")
+        self.results_logger.write_line("#\t - Score method used: {}\n".format(self.score_type))
         self.results_logger.write_line("#\t - Frequency counting methodology: {}\n".format(
             self.local_scorer.count_method))
         self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.local_scorer.esz))
@@ -493,8 +498,8 @@ class HillClimbing(BaseAlgorithm):
             - Action performed (addition, removal, inversion)
             - Origin node
             - Destination node
-            - BDeu (total)
-            - BDeu (delta)
+            - Score (total)
+            - Score (delta)
             - Newly computed operations (total)
             - Newly computed operations (delta)
             - Total operations (total)
@@ -505,7 +510,7 @@ class HillClimbing(BaseAlgorithm):
 
         # Prepare the list
         headers = ["iteration", "action", "origin", "destination",
-                   "bdeu", "bdeu_delta",
+                   "score", "score_delta",
                    "comp_operations", "comp_operations_delta",
                    "total_operations", "total_operations_delta",
                    "time_taken", "time_taken_delta"]
@@ -537,11 +542,11 @@ class HillClimbing(BaseAlgorithm):
         score_delta: float
             Change in total score after the iteration.
         comp_operations: int
-            Total computed operations (operations that needed to compute a new BDeu score) after the iteration
+            Total computed operations (operations that needed to compute a new local score) after the iteration
         comp_operations_delta: int
             Difference in computed operations after the iteration
         total_operations: int
-            Total operations (including BDeu lookups in the cache) after the iteration.
+            Total operations (including local score lookups in the cache) after the iteration.
         total_operations_delta: int
             Difference in total operations after the iteration.
         time_taken: float
@@ -585,7 +590,8 @@ class HillClimbing(BaseAlgorithm):
                              computed_scores, total_scores, time_taken,
                              markov, original_markov=None, markov_difference=None, markov_difference_percent=None,
                              smhd=None, empty_smhd=None, smhd_difference=None, smhd_difference_percent=None,
-                             log=None, original_log=None, log_difference=None, log_difference_percent=None):
+                             log=None, original_log=None, log_difference=None, log_difference_percent=None,
+                             original_score=None, original_score_difference=None, original_score_difference_percent=None):
         """
         Write the final experiment results, if applicable, into the results logger.
 
@@ -620,13 +626,13 @@ class HillClimbing(BaseAlgorithm):
         time_taken: float
             Time taken (in seconds) to perform the algorithm
         markov: float
-            Average Markov mantle size of the final DAG
+            Average Markov blanket size of the final DAG
         original_markov: float, optional
-            Average Markov mantle size of the original DAG
+            Average Markov blanket size of the original DAG
         markov_difference: float, optional
-            Difference in Markov mantle sizes between the final and the original DAG
+            Difference in Markov blanket sizes between the final and the original DAG
         markov_difference_percent: float, optional
-            Difference (in percentage) in Markov mantle sizes between the final and the original DAG
+            Difference (in percentage) in Markov blanket sizes between the final and the original DAG
         smhd: int, optional
             Structural moralized Hamming distance between the final DAG and the original DAG
         empty_smhd: int, optional
@@ -643,6 +649,12 @@ class HillClimbing(BaseAlgorithm):
             Difference in log likelihood between the final and the original DAG
         log_difference_percent: float, optional
             Difference (in percent) in log likelihood between the final and the original DAG
+        original_score: float, optional
+            Total score of the original DAG
+        original_score_difference: float, optional
+            Score improvement / difference between the original DAG and the obtained DAG
+        original_score_difference_percent: float, optional
+            Score improvement / difference (in percentage) between the original DAG and the obtained DAG
         """
 
         # If a results logger exists, print the iteration data
@@ -655,6 +667,12 @@ class HillClimbing(BaseAlgorithm):
             self.results_logger.write_line("#\t * Score improvement: {}\n".format(score_improvement))
             self.results_logger.write_line("#\t * Score improvement (%): {}%\n\n".format(score_improvement_percent))
 
+            # If a bayesian network exists, also write the score for the original network
+            if self.bayesian_network:
+                self.results_logger.write_line("#\t * Score of the original graph: {}\n".format(original_score))
+                self.results_logger.write_line("#\t * Score difference: {}\n".format(original_score_difference))
+                self.results_logger.write_line("#\t * Score difference (%): {}%\n\n".format(original_score_difference_percent))
+
             self.results_logger.write_line("# - Time taken: {} secs\n\n".format(time_taken))
 
             self.results_logger.write_line("# - Total operations performed: {}\n".format(total_operations))
@@ -665,12 +683,12 @@ class HillClimbing(BaseAlgorithm):
             self.results_logger.write_line("# - Computed scores: {}\n".format(computed_scores))
             self.results_logger.write_line("# - Total scores (including cache lookups): {}\n\n".format(total_scores))
 
-            self.results_logger.write_line("# - Average Markov mantle size: {}\n".format(markov))
+            self.results_logger.write_line("# - Average Markov blanket size: {}\n".format(markov))
 
             # If a bayesian network exists, also write additional results
             if self.bayesian_network:
                 self.results_logger.write_line(
-                    "#\t * Original average Markov mantle size: {}\n".format(original_markov))
+                    "#\t * Original average Markov blanket size: {}\n".format(original_markov))
                 self.results_logger.write_line("#\t * Markov difference: {}\n".format(markov_difference))
                 self.results_logger.write_line("#\t * Markov difference (%): {}%\n\n".format(markov_difference_percent))
 
@@ -706,11 +724,11 @@ class HillClimbing(BaseAlgorithm):
             print("# - Computed scores: {}".format(computed_scores))
             print("# - Total scores (including cache lookups): {}\n".format(total_scores))
 
-            print("# - Average Markov mantle size: {}".format(markov))
+            print("# - Average Markov blanket size: {}".format(markov))
 
             # If a bayesian network exists, also write additional results
             if self.bayesian_network:
-                print("#\t * Original average Markov mantle size: {}".format(original_markov))
+                print("#\t * Original average Markov blanket size: {}".format(original_markov))
                 print("#\t * Markov difference: {}".format(markov_difference))
                 print("#\t * Markov difference (%): {}%\n".format(markov_difference_percent))
 

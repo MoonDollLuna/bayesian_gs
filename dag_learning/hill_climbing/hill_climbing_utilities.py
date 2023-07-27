@@ -158,9 +158,9 @@ def _is_legal_inversion(dag, source, target):
 
 # STATISTIC COMPUTATIONS #
 
-def compute_average_markov_mantle(dag):
+def compute_average_markov_blanket(dag):
     """
-    Given a directed acyclic graph (DAG), compute the average Markov mantle (the average number of
+    Given a directed acyclic graph (DAG), compute the average Markov blanket (the average number of
     parents, children and children's other parents than each node has)
 
     Parameters
@@ -176,7 +176,7 @@ def compute_average_markov_mantle(dag):
     # Get the list of nodes
     nodes = list(dag.nodes)
 
-    # Get the total mantle size for all nodes
+    # Get the total blanket size for all nodes
     total_mantle_size = sum([len(dag.get_markov_blanket(x)) for x in nodes])
     return total_mantle_size / len(nodes)
 
