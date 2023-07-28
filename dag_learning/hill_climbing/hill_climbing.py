@@ -330,7 +330,7 @@ class HillClimbing(BaseAlgorithm):
 
             # Score of the original bayesian network
             original_score = self.local_scorer.global_score(self.bayesian_network)
-            original_score_diff = best_score - empty_score
+            original_score_diff = best_score - original_score
             original_score_percent = compute_percentage_difference(original_score, best_score)
 
             # Average Markov blanket difference
