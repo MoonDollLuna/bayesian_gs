@@ -45,6 +45,8 @@ class BDeuScore:
     # DATA HANDLING #
     # Data contained within the scorer
     data: np.ndarray
+    # Number of rows within the data, for convenience
+    data_rows_count: int
     # Index of all nodes within the numpy array
     # Shape: {variable_name: index}
     node_index: dict
@@ -63,6 +65,7 @@ class BDeuScore:
 
         # Store the input data and initialize the dictionaries
         self.data = data
+        self.data_rows_count = data.shape[0]
         self._initialize_dictionaries(nodes)
 
         # Store the equivalent sample size
@@ -101,8 +104,10 @@ class BDeuScore:
         """
         Computes the local BDeu score for a variable given a list of parents.
 
-        This code is based on pgmpy's BDeu Scorer implementation, but modified to speed up the calculation
-        by using a numpy array instead of a Pandas dataframe.
+        This code is based on pgmpy's BDeu Scorer implementation, but modified to:
+
+        - Speed up the calculation by using a numpy array instead of a Pandas dataframe.
+        - Include the prior probability of the variable having said parents.
 
         Parameters
         ----------
@@ -134,15 +139,18 @@ class BDeuScore:
 
         # Get the count of each variable state for each combination of parents
         if self.count_method == "unique":
-            state_counts = self.get_state_counts_unique(variable, variable_states, parents, parent_state_combinations)
+            state_counts = self._get_state_counts_unique(variable, variable_states, parents, parent_state_combinations)
         elif self.count_method == "forloop":
-            state_counts = self.get_state_counts_for(variable, variable_states, parents, parent_state_combinations)
+            state_counts = self._get_state_counts_forloop(variable, variable_states, parents, parent_state_combinations)
         elif self.count_method == "mask":
-            state_counts = self.get_state_counts_mask(variable, variable_states, parents, parent_state_combinations)
+            state_counts = self._get_state_counts_masks(variable, variable_states, parents, parent_state_combinations)
         else:
             raise ValueError("A valid counts method must be specified.")
 
         # BDEU CALCULATION #
+
+        # Compute the prior probability
+        prior_value = self._get_local_prior_probability(len(parents))
 
         # Compute constants #
         # Alpha - (equivalent sample size / number of parent states)
@@ -150,7 +158,7 @@ class BDeuScore:
         # Beta - (equivalent sample size / number of child and parent states)
         beta = self.esz / (parent_length * variable_length)
 
-        # SECOND TERM (variable term) (ln(gamma(state counts + beta) / gamma(beta)) #
+        # SECOND TERM (variable term) = (ln(gamma(state counts + beta) / gamma(beta)) #
         # Instead of applying log to each division, sum(nominators) - sum(denominators) will be applied
         # for vectorization
 
@@ -167,7 +175,7 @@ class BDeuScore:
         # Subtract both terms to obtain the final log result
         variable_value = variable_numerator - variable_denominator
 
-        # FIRST TERM (parents term) (ln(gamma(alpha) / gamma(parents state counts + alpha))
+        # FIRST TERM (parents term) = (ln(gamma(alpha) / gamma(parents state counts + alpha))
         # Instead of applying log to each division, sum(nominators) - sum(denominators) will be applied
         # for vectorization
 
@@ -189,10 +197,41 @@ class BDeuScore:
 
         # FINAL BDEU SCORE #
 
-        # Given both parent and variable terms, return the sum
-        return variable_value + parent_value
+        # Given the prior probability, the parents term and the variable term, return the sum
+        return prior_value + variable_value + parent_value
 
-        # UNIQUE STATE COUNT #
+    def _get_local_prior_probability(self, parents_amount):
+        """
+        Computes the prior probability of a variable having the specified list of parents.
+
+        Essentially, computes how likely this family would be, penalizing variables with an excessive
+        amount of parents.
+
+        This implementation is based on Tetrad's BDeu scorer.
+
+        Parameters
+        ----------
+        parents_amount: int
+            Number of parents contained by the variable
+
+        Returns
+        -------
+        float
+            Local prior probability
+        """
+
+        # A constant "structure prior" probability of 1.0 is used as part of the BDeu assumptions.
+        structure_prior = 1.0
+        # A "sample size" of the number of rows is used
+        sample_size = self.data_rows_count - 1
+
+        # The prior probability has two terms:
+        # - How likely the DAG is to exist
+        # - How likely is that this node has this amount of parents within this DAG
+        dag_likelihood = self.data_rows_count * math.log(structure_prior / sample_size)
+        variable_likelihood = (sample_size - parents_amount) * math.log(1 - (structure_prior / sample_size))
+
+        return dag_likelihood + variable_likelihood
 
     def global_score(self, dag):
         """
@@ -222,7 +261,7 @@ class BDeuScore:
 
     # COUNT FUNCTIONS #
 
-    def get_state_counts_unique(self, variable, variable_states, parents, parent_state_combinations):
+    def _get_state_counts_unique(self, variable, variable_states, parents, parent_state_combinations):
         """
         For each combination of parent states, returns the count of each variable state.
 
@@ -279,7 +318,7 @@ class BDeuScore:
 
         return counts_array
 
-    def get_state_counts_for(self, variable, variable_states, parents, parent_state_combinations):
+    def _get_state_counts_forloop(self, variable, variable_states, parents, parent_state_combinations):
         """
         For each combination of parent states, returns the count of each variable state.
 
@@ -326,7 +365,7 @@ class BDeuScore:
 
         return counts_array
 
-    def get_state_counts_mask(self, variable, variable_states, parents, parent_state_combinations):
+    def _get_state_counts_masks(self, variable, variable_states, parents, parent_state_combinations):
         """
         For each combination of parent states, returns the count of each variable state.
 
