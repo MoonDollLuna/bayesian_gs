@@ -198,7 +198,8 @@ class BDeuScore:
         # FINAL BDEU SCORE #
 
         # Given the prior probability, the parents term and the variable term, return the sum
-        return prior_value + variable_value + parent_value
+        final_value = prior_value + variable_value + parent_value
+        return final_value
 
     def _get_local_prior_probability(self, parents_amount):
         """
@@ -226,9 +227,9 @@ class BDeuScore:
         sample_size = self.data_rows_count - 1
 
         # The prior probability has two terms:
-        # - How likely the DAG is to exist
+        # - How much information is contained within the dag
         # - How likely is that this node has this amount of parents within this DAG
-        dag_likelihood = self.data_rows_count * math.log(structure_prior / sample_size)
+        dag_likelihood = parents_amount * math.log(structure_prior / sample_size)
         variable_likelihood = (sample_size - parents_amount) * math.log(1 - (structure_prior / sample_size))
 
         return dag_likelihood + variable_likelihood
