@@ -281,9 +281,9 @@ class HillClimbing(BaseAlgorithm):
 
             iterations += 1
 
-            new_time_taken = time()
+            new_time_taken = time() - initial_time
             time_taken_delta = new_time_taken - time_taken
-            time_taken = new_time_taken - initial_time
+            time_taken = new_time_taken 
 
             if action_taken:
                 action_str, (origin, destination) = action_taken
