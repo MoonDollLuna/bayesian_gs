@@ -7,6 +7,7 @@
 import argparse
 import json
 
+# TODO - Hide imports behind entry point based on chosen options to speed up
 from pgmpy.readwrite.BIF import BIFReader
 from dag_learning import HillClimbing
 from dag_architectures import ExtendedDAG

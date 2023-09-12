@@ -182,8 +182,8 @@ class HillClimbing(BaseAlgorithm):
                         self._compute_score_delta(Y, original_parents_list, new_parents_list)
 
                     current_score = best_score + current_score_delta
-                    computed_operations_delta = local_operations_computed
-                    total_operations_delta = local_total_operations
+                    computed_operations_delta += local_operations_computed
+                    total_operations_delta += local_total_operations
 
                     # Update the metrics
                     total_operations += local_total_operations
@@ -208,8 +208,8 @@ class HillClimbing(BaseAlgorithm):
                         self._compute_score_delta(Y, original_parents_list, new_parents_list)
 
                     current_score = best_score + current_score_delta
-                    computed_operations_delta = local_operations_computed
-                    total_operations_delta = local_total_operations
+                    computed_operations_delta += local_operations_computed
+                    total_operations_delta += local_total_operations
 
                     # Update the metrics
                     total_operations += local_total_operations
@@ -242,8 +242,8 @@ class HillClimbing(BaseAlgorithm):
 
                     current_score_delta = current_x_score_delta + current_y_spore_delta
                     current_score = best_score + current_score_delta
-                    computed_operations_delta = local_x_operations_computed + local_y_operations_computed
-                    total_operations_delta = local_total_x_operations + local_total_y_operations
+                    computed_operations_delta += local_x_operations_computed + local_y_operations_computed
+                    total_operations_delta += local_total_x_operations + local_total_y_operations
 
                     # Update the metrics
                     total_operations += local_total_x_operations + local_total_y_operations

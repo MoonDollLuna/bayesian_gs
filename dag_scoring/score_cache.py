@@ -1,6 +1,9 @@
 # BAYESIAN NETWORK - NN GS SPEEDUP #
 # Developed by Luna Jimenez Fernandez
-# Based on the work of Wenfeng Zhang et al.
+# Based on the work of Wenfeng Zhang et al
+
+# TODO - CHANGE TO PYTHON CACHE
+# TODO - PARALLELIZE HILLCLIMBING
 
 def nodes_to_key(node, parents):
     """
