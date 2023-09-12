@@ -368,9 +368,9 @@ if __name__ == "__main__":
                                      bdeu_count_method=bdeu_count_method)
 
         # Perform Hill Climbing
-        resulting_dag = hill_climbing.estimate_dag(starting_dag=starting_dag, epsilon=epsilon,
-                                                   max_iterations=max_iterations, log_likelihood_size=log_likelihood_size,
-                                                   wipe_cache=wipe_cache, verbose=verbose)
+        resulting_dag = hill_climbing.search(starting_dag=starting_dag, epsilon=epsilon,
+                                             max_iterations=max_iterations, log_likelihood_size=log_likelihood_size,
+                                             wipe_cache=wipe_cache, verbose=verbose)
 
     else:
         # TODO ADD MORE ALGORITHMS

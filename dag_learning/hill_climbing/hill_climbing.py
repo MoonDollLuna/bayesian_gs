@@ -37,8 +37,8 @@ class HillClimbing(BaseAlgorithm):
 
     # MAIN METHODS #
 
-    def estimate_dag(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
-                     log_likelihood_size=1000, wipe_cache=False, verbose=0):
+    def search(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
+               log_likelihood_size=1000, wipe_cache=False, verbose=0):
         """
         Performs Hill Climbing to find a local best DAG based on the score metric specified in the constructor.
 
@@ -154,8 +154,8 @@ class HillClimbing(BaseAlgorithm):
             action_taken = None
 
             # Create delta variables to store change in values
-            computed_operations_delta = 0
             total_operations_delta = 0
+            computed_operations_delta = 0
 
             # Compute all possible actions for the current DAG
             actions = find_legal_hillclimbing_operations(dag)
@@ -169,6 +169,13 @@ class HillClimbing(BaseAlgorithm):
                                        desc=("= ITERATION {}: ".format(iterations + 1)),
                                        disable=(verbose < 2)):
 
+                # Metrics shared by all operations
+                # Score improvement from the operation
+                action_score_delta = 0.0
+                # Number of computed operations and number of total (including cache lookups) operations
+                action_total_operations = 0
+                action_computed_operations = 0
+
                 # Depending on the action, compute the hypothetical parents list and child
                 # Addition
                 if action == "add":
@@ -178,23 +185,8 @@ class HillClimbing(BaseAlgorithm):
                     new_parents_list = original_parents_list + [X]
 
                     # Compute the score delta and the possible new score
-                    current_score_delta, local_total_operations, local_operations_computed = \
+                    action_score_delta, action_total_operations, action_computed_operations = \
                         self._compute_score_delta(Y, original_parents_list, new_parents_list)
-
-                    current_score = best_score + current_score_delta
-                    computed_operations_delta += local_operations_computed
-                    total_operations_delta += local_total_operations
-
-                    # Update the metrics
-                    total_operations += local_total_operations
-                    computed_operations += local_operations_computed
-
-                    # If the action improves the score, store it and all required information
-                    if current_score > current_best_score:
-                        # Best score and delta
-                        current_best_score = current_score
-                        score_delta = current_score_delta
-                        action_taken = (action, (X, Y))
 
                 # Removal
                 elif action == "remove":
@@ -204,30 +196,14 @@ class HillClimbing(BaseAlgorithm):
                     new_parents_list = original_parents_list[:].remove(X)
 
                     # Compute the score delta and the possible new score
-                    current_score_delta, local_total_operations, local_operations_computed = \
+                    action_score_delta, action_total_operations, action_computed_operations = \
                         self._compute_score_delta(Y, original_parents_list, new_parents_list)
-
-                    current_score = best_score + current_score_delta
-                    computed_operations_delta += local_operations_computed
-                    total_operations_delta += local_total_operations
-
-                    # Update the metrics
-                    total_operations += local_total_operations
-                    computed_operations += local_operations_computed
-
-                    # If the action improves the score, store it and all required information
-                    if current_score > current_best_score:
-                        # Best score and delta
-                        current_best_score = current_score
-                        score_delta = current_score_delta
-                        action_taken = (action, (X, Y))
 
                 # Inversion
                 elif action == "invert":
 
                     # Compute the hypothetical parents lists
                     # Note: in this case, two families are being changed
-
                     original_x_parents_list = dag.get_parents(X)
                     new_x_parents_list = original_x_parents_list + [Y]
 
@@ -235,26 +211,34 @@ class HillClimbing(BaseAlgorithm):
                     new_y_parents_list = original_y_parents_list[:].remove(X)
 
                     # Compute the score deltas
-                    current_x_score_delta, local_total_x_operations, local_x_operations_computed = \
+                    x_score_delta, x_total_operations, x_computed_operations = \
                         self._compute_score_delta(X, original_x_parents_list, new_x_parents_list)
-                    current_y_spore_delta, local_total_y_operations, local_y_operations_computed = \
+                    y_spore_delta, y_total_operations, y_computed_operations = \
                         self._compute_score_delta(Y, original_y_parents_list, new_y_parents_list)
 
-                    current_score_delta = current_x_score_delta + current_y_spore_delta
-                    current_score = best_score + current_score_delta
-                    computed_operations_delta += local_x_operations_computed + local_y_operations_computed
-                    total_operations_delta += local_total_x_operations + local_total_y_operations
+                    # Join the score deltas and the operation deltas
+                    action_score_delta = x_score_delta + y_spore_delta
+                    action_total_operations = x_total_operations + y_total_operations
+                    action_computed_operations = x_computed_operations + y_computed_operations
 
-                    # Update the metrics
-                    total_operations += local_total_x_operations + local_total_y_operations
-                    computed_operations += local_x_operations_computed + local_y_operations_computed
+                # Operation checked:
 
-                    # If the action improves the score, store it and all required information
-                    if current_score > current_best_score:
-                        # Best score and delta
-                        current_best_score = current_score
-                        score_delta = current_score_delta
-                        action_taken = (action, (X, Y))
+                # Compute the final score for the checked operation
+                operation_score = best_score + action_score_delta
+
+                # Update the metrics
+                total_operations += action_total_operations
+                computed_operations += action_computed_operations
+
+                total_operations_delta += action_total_operations
+                computed_operations_delta += action_computed_operations
+
+                # If the action improves the score, store it and all required information
+                if operation_score > current_best_score:
+                    # Best score and delta
+                    current_best_score = operation_score
+                    score_delta = action_score_delta
+                    action_taken = (action, (X, Y))
 
             # ALL OPERATIONS TRIED
 
@@ -388,6 +372,7 @@ class HillClimbing(BaseAlgorithm):
 
     # AUXILIARY METHODS #
 
+    # TODO MOVE TO SCORER
     def _compute_score_delta(self, node, original_parents, new_parents):
         """
         Given a node and the original and new set of parents (after an operation to add, remove
