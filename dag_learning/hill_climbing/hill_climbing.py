@@ -263,7 +263,7 @@ class HillClimbing(BaseAlgorithm):
             time_taken = new_time_taken
 
             # Operations performed (true computations and all computations including cache lookups)
-            current_computed_operations = self.local_scorer.local_score.cache_info().hits
+            current_computed_operations = self.local_scorer.local_score.cache_info().misses
             current_total_operations = self.local_scorer.local_score.cache_info().hits + \
                                        self.local_scorer.local_score.cache_info().misses
 
