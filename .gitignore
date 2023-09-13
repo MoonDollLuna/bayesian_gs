@@ -129,8 +129,7 @@ dmypy.json
 .pyre/
 
 # Outputs
-output/
-output_old/
+output*/
 *.xml
 
 .idea/*

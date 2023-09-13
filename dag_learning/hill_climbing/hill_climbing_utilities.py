@@ -231,4 +231,8 @@ def compute_percentage_difference(original_score, new_score):
     float
     """
 
+    # As a failsafe, if the original score is 0 the difference is considered to be infinite
+    if original_score == 0:
+        return "inf"
+    
     return ((new_score - original_score) / abs(original_score)) * 100
