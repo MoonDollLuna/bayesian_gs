@@ -5,12 +5,13 @@
 # IMPORTS #
 import math
 from itertools import product
+from functools import lru_cache
 
 import numpy as np
 from scipy.special import gammaln
 from pgmpy.base import DAG
 
-
+# TODO - Make a generic Scorer class for the methods that are required
 class BDeuScore:
     """
     Class designed for DAG and Bayesian Network structure scoring based on the Bayesian Dirichlet
@@ -100,6 +101,7 @@ class BDeuScore:
 
     # SCORE FUNCTIONS #
 
+    @lru_cache(maxsize=None)
     def local_score(self, variable, parents):
         """
         Computes the local BDeu score for a variable given a list of parents.
@@ -109,11 +111,13 @@ class BDeuScore:
         - Speed up the calculation by using a numpy array instead of a Pandas dataframe.
         - Include the prior probability of the variable having said parents.
 
+        This function is cached, meaning that repeated calls with the same arguments will only be run once.
+
         Parameters
         ----------
         variable: str
             Child variable of which the BDeu score is being computed
-        parents: list[str]
+        parents: tuple[str]
             List of parent variables that influence the child variable. If the variables
             have no parents, an empty list must be passed instead.
 
@@ -256,9 +260,36 @@ class BDeuScore:
         # For each variable, find its parents and compute the local score
         for variable in list(dag.nodes):
             parents = dag.get_parents(variable)
-            score += self.local_score(variable, parents)
+            score += self.local_score(variable, tuple(parents))
 
         return score
+
+    def local_score_delta(self, node, original_parents, new_parents):
+        """
+        Given a node and the original and new set of parents (after an operation to add, remove
+        or invert and edge), computes the difference in local score between the new and old set of parents.
+
+        Parameters
+        ----------
+        node: str
+            The children node
+        original_parents: tuple[str]
+            The original parents of node
+        new_parents: tuple[str]
+            The new parents of node after the operation
+
+        Returns
+        -------
+        float
+        """
+
+        # Compute the BDeu score for the original parents
+        original_score = self.local_score(node, original_parents)
+
+        # Compute the BDeu score for the new parents
+        new_score = self.local_score(node, new_parents)
+
+        return new_score - original_score
 
     # COUNT FUNCTIONS #
 

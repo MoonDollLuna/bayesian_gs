@@ -175,13 +175,6 @@ if __name__ == "__main__":
                         help="ONLY USED IF A BIF FILE IS SPECIFIED. Size (in instances) of the sample used for "
                              "log likelihood.")
 
-    # Whether to wipe the cache (True) or not (False)
-    wipe_cache = False
-    parser.add_argument("-hcw",
-                        "--hillclimbing_wipe",
-                        action="store_true",
-                        help="If specified, the score cache will be forcefully wiped before the Hill Climbing algorithm.")
-
     # Verbosity (between 0 and 6)
     verbose = 0
     parser.add_argument("-hcv",
@@ -314,10 +307,6 @@ if __name__ == "__main__":
             else:
                 log_likelihood_size = arguments["hillclimbing_loglikelihood"]
 
-    if "hillclimbing_wipe" in arguments:
-        if arguments["hillclimbing_wipe"]:
-            wipe_cache = True
-
     if "hillclimbing_verbosity" in arguments:
         if arguments["hillclimbing_verbosity"]:
             verbose = arguments["hillclimbing_verbosity"]
@@ -368,9 +357,8 @@ if __name__ == "__main__":
                                      bdeu_count_method=bdeu_count_method)
 
         # Perform Hill Climbing
-        resulting_dag = hill_climbing.search(starting_dag=starting_dag, epsilon=epsilon,
-                                             max_iterations=max_iterations, log_likelihood_size=log_likelihood_size,
-                                             wipe_cache=wipe_cache, verbose=verbose)
+        resulting_dag = hill_climbing.search(starting_dag=starting_dag, epsilon=epsilon, max_iterations=max_iterations,
+                                             log_likelihood_size=log_likelihood_size, verbose=verbose)
 
     else:
         # TODO ADD MORE ALGORITHMS

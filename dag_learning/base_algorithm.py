@@ -10,7 +10,7 @@ from numpy import ndarray
 from pgmpy.models import BayesianNetwork
 from pandas import DataFrame, read_csv
 
-from dag_scoring import ScoreCache, BDeuScore
+from dag_scoring import BDeuScore
 from utils import ResultsLogger
 
 from typing import Optional, Any
@@ -80,8 +80,6 @@ class BaseAlgorithm:
     score_type: str
     # Local scorer
     local_scorer: Any
-    # Local score cache
-    score_cache: ScoreCache
     # Log manager
     results_logger: Optional[ResultsLogger]
 
@@ -132,12 +130,7 @@ class BaseAlgorithm:
         # If a bayesian network is specified, store it for structure checks
         self.bayesian_network = bayesian_network
 
-        # Initialize the utility classes
-
-        # Local score cache
-        self.score_cache = ScoreCache()
-
-        # Scorer
+        # Initialize the scorer class
         if score_method == "bdeu":
             self.score_type = "bdeu"
             equivalent_sample_size = score_arguments["bdeu_equivalent_sample_size"] if \

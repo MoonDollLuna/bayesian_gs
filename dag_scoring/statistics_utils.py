@@ -30,7 +30,7 @@ def average_markov_blanket(dag):
     return total_mantle_size / len(nodes)
 
 
-def smhd(original_dag, obtained_dag):
+def structural_moral_hamming_distance(original_dag, obtained_dag):
     """
     Computes the Structural Moral Hamming Distance (SMHD) between two DAGs (an original one
     and the one obtained through a structural learning process)
