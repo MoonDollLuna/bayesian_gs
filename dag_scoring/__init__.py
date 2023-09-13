@@ -6,5 +6,8 @@
 This module contains all classes related to BDeu score computations and storing.
 """
 
-from .score_cache import ScoreCache
+# Statistics
+from statistics_utils import average_markov_blanket, smhd, percentage_difference
+
+# Scorers
 from .bdeu_score import BDeuScore

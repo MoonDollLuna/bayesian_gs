@@ -6,12 +6,13 @@
 import math
 from time import time
 import datetime
-from tqdm import tqdm
 import os
 from pathlib import Path
 
-from dag_learning import BaseAlgorithm, \
-    find_legal_hillclimbing_operations, compute_average_markov_blanket, compute_smhd, compute_percentage_difference
+from tqdm import tqdm
+
+from dag_learning import BaseAlgorithm, find_legal_hillclimbing_operations
+from dag_scoring import average_markov_blanket, smhd, percentage_difference
 from dag_architectures import ExtendedDAG
 
 from pgmpy.sampling import BayesianModelSampling
@@ -301,13 +302,13 @@ class HillClimbing(BaseAlgorithm):
         # Local score
         empty_score = self.local_scorer.global_score(empty_dag)
         score_diff = best_score - empty_score
-        score_percent = compute_percentage_difference(empty_score, best_score)
+        score_percent = percentage_difference(empty_score, best_score)
 
         # Total actions
         total_actions = add_operations + remove_operations + invert_operations
 
         # Average Markov blanket
-        average_markov = compute_average_markov_blanket(dag)
+        average_markov = average_markov_blanket(dag)
 
         # The following metrics require an original DAG or Bayesian Network as an argument
         if self.bayesian_network is not None:
@@ -315,18 +316,18 @@ class HillClimbing(BaseAlgorithm):
             # Score of the original bayesian network
             original_score = self.local_scorer.global_score(self.bayesian_network)
             original_score_diff = best_score - original_score
-            original_score_percent = compute_percentage_difference(original_score, best_score)
+            original_score_percent = percentage_difference(original_score, best_score)
 
             # Average Markov blanket difference
-            original_markov = compute_average_markov_blanket(self.bayesian_network)
+            original_markov = average_markov_blanket(self.bayesian_network)
             average_markov_diff = average_markov - original_markov
-            average_markov_percent = compute_percentage_difference(original_markov, average_markov)
+            average_markov_percent = percentage_difference(original_markov, average_markov)
 
             # Structural moral hamming distance (SMHD)
-            smhd = compute_smhd(self.bayesian_network, dag)
-            empty_smhd = compute_smhd(self.bayesian_network, empty_dag)
-            smhd_diff = empty_smhd - smhd
-            smhd_percent = compute_percentage_difference(smhd, empty_smhd)
+            computed_smhd = smhd(self.bayesian_network, dag)
+            empty_smhd = smhd(self.bayesian_network, empty_dag)
+            smhd_diff = empty_smhd - computed_smhd
+            smhd_percent = percentage_difference(computed_smhd, empty_smhd)
 
             # Log likelihood of sampled data
             # Sample data from the original bayesian network
@@ -337,14 +338,14 @@ class HillClimbing(BaseAlgorithm):
             log_likelihood = log_likelihood_score(current_bn, sampled_data)
             original_log_likelihood = log_likelihood_score(self.bayesian_network, sampled_data)
             log_likelihood_diff = log_likelihood - original_log_likelihood
-            log_likelihood_percent = compute_percentage_difference(original_log_likelihood, log_likelihood)
+            log_likelihood_percent = percentage_difference(original_log_likelihood, log_likelihood)
 
             # Print the results
             self._write_final_results(dag, verbose, best_score, empty_score, score_diff, score_percent,
                                       total_actions, add_operations, remove_operations, invert_operations,
                                       computed_operations, total_operations, time_taken, average_markov,
                                       original_markov, average_markov_diff, average_markov_percent,
-                                      smhd, empty_smhd, smhd_diff, smhd_percent,
+                                      computed_smhd, empty_smhd, smhd_diff, smhd_percent,
                                       log_likelihood, original_log_likelihood,
                                       log_likelihood_diff, log_likelihood_percent,
                                       original_score, original_score_diff, original_score_percent)
