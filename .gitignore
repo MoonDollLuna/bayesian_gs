@@ -131,6 +131,7 @@ dmypy.json
 # Outputs
 output*/
 *.xml
+.idea/*
 
 .idea/*
 
