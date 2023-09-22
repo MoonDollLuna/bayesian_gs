@@ -64,10 +64,8 @@ class BaseAlgorithm:
     # Bayesian network data #
     # Data, variables... from the original Bayesian network, used to build the new DAG
 
-    # Data from which to generate a DAG
-    data: str or ndarray or DataFrame
     # Dataframe, used for PGMPY operations
-    dataframe: DataFrame or None
+    data: DataFrame or None
     # Nodes contained within the data
     nodes: list
     # Original BN (used to compare structure results)
@@ -95,31 +93,30 @@ class BaseAlgorithm:
                  results_path=None, output_file_name=None, flush_frequency=300,
                  resulting_bif_path=None, **score_arguments):
 
-        # Process the input data and, if necessary, convert it into a numpy array
+        # Process the input data
         if isinstance(data, (str, DataFrame)):
-            # Path to a CSV file or Pandas DataFrame
 
+            # Path to a CSV file or Pandas DataFrame
             # If a path to a CSV file is given, read the data from it and extract the input file name
             if isinstance(data, str):
                 output_file_name = os.path.splitext(os.path.basename(data))[0]
                 # Data is always read as string, to avoid data type sniffing
-                data = read_csv(data, dtype=str)
+                # In addition, no values are interpreted as NaN
+                data = read_csv(data, dtype=str, keep_default_na=False)
 
-            # Convert the data into a numpy array and extract the node names
-            self.data = data.to_numpy(dtype='<U8')
-            self.dataframe = data
-            self.nodes = data.columns.values.tolist()
+            # Store the data and extract the nodes
+            self.data = data
+            self.nodes = list(self.data.columns)
 
         elif isinstance(data, ndarray):
             # Numpy
-            self.data = data
-            self.dataframe = None
-
             # Nodes MUST be given as an argument
             if nodes is None:
                 raise ValueError("A list of variable names must be given if a numpy array is passed as argument.")
-            else:
-                self.nodes = nodes
+
+            # Create a Pandas dataframe from the given information
+            self.data = DataFrame(data=data, columns=nodes)
+            self.nodes = nodes
         else:
             raise TypeError("Data must be provided as a CSV file, a Pandas dataframe or a Numpy array.")
 
@@ -138,9 +135,7 @@ class BaseAlgorithm:
             count_method = score_arguments["bdeu_count_method"] if \
                 ("bdeu_count_method" in score_arguments) else "unique"
 
-            self.local_scorer = BDeuScore(self.data, self.nodes,
-                                          equivalent_sample_size=equivalent_sample_size,
-                                          count_method=count_method)
+            self.local_scorer = BDeuScore(self.data, equivalent_sample_size=equivalent_sample_size)
         else:
             # Currently, only BDeu is implemented
             raise NotImplementedError("Only BDeu scoring is currently available")

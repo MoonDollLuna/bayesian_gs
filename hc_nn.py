@@ -185,14 +185,6 @@ if __name__ == "__main__":
                         help="Level of verbosity of the algorithm.")
 
     # BDEU SPECIFIC ARGUMENTS
-    # Count method for frequency sampling within BDeu scores
-    bdeu_count_method = "unique"
-    parser.add_argument("-bdeuc",
-                        "--bdeu_counting",
-                        choices=["unique", "forloop", "mask"],
-                        help="Frequency sampling method used for BDeu scoring. NOTE: \"unique\" is the most efficient "
-                             "method available, and thus it is recommended.")
-
     # BDeu equivalent sample size
     bdeu_equivalent_sample_size = 10
     parser.add_argument("-bdeus",
@@ -313,10 +305,6 @@ if __name__ == "__main__":
 
     # BDEU SCORE #
 
-    if "bdeu_counting" in arguments:
-        if arguments["bdeu_counting"]:
-            bdeu_count_method = arguments["bdeu_counting"]
-
     if "bdeu_sample_size" in arguments:
         if arguments["bdeu_sample_size"]:
             if arguments["bdeu_sample_size"] <= 0:
@@ -353,8 +341,7 @@ if __name__ == "__main__":
         hill_climbing = HillClimbing(csv_file, nodes=None, bayesian_network=bif_file, score_method=score_method,
                                      results_path=results_path, output_file_name=output_name,
                                      flush_frequency=flush_frequency, resulting_bif_path=resulting_bif_path,
-                                     bdeu_equivalent_sample_size=bdeu_equivalent_sample_size,
-                                     bdeu_count_method=bdeu_count_method)
+                                     bdeu_equivalent_sample_size=bdeu_equivalent_sample_size)
 
         # Perform Hill Climbing
         resulting_dag = hill_climbing.search(starting_dag=starting_dag, epsilon=epsilon, max_iterations=max_iterations,

@@ -108,14 +108,7 @@ class BDeuScore:
         parent_state_combinations = list(product(*parent_states))
 
         # Get the count of each variable state for each combination of parents
-        if self.count_method == "unique":
-            state_counts = self._get_state_counts_unique(variable, variable_states, parents, parent_state_combinations)
-        elif self.count_method == "forloop":
-            state_counts = self._get_state_counts_forloop(variable, variable_states, parents, parent_state_combinations)
-        elif self.count_method == "mask":
-            state_counts = self._get_state_counts_masks(variable, variable_states, parents, parent_state_combinations)
-        else:
-            raise ValueError("A valid counts method must be specified.")
+        state_counts = self._get_state_counts(variable, variable_states, parents, parent_state_combinations)
 
         # BDEU CALCULATION #
 
@@ -171,39 +164,6 @@ class BDeuScore:
         final_value = prior_value + variable_value + parent_value
         return final_value
 
-    def _get_local_prior_probability(self, parents_amount):
-        """
-        Computes the prior probability of a variable having the specified list of parents.
-
-        Essentially, computes how likely this family would be, penalizing variables with an excessive
-        amount of parents.
-
-        This implementation is based on Tetrad's BDeu scorer.
-
-        Parameters
-        ----------
-        parents_amount: int
-            Number of parents contained by the variable
-
-        Returns
-        -------
-        float
-            Local prior probability
-        """
-
-        # A constant "structure prior" probability of 1.0 is used as part of the BDeu assumptions.
-        structure_prior = 1.0
-        # A "sample size" of the number of rows is used
-        sample_size = self.data_rows_count - 1
-
-        # The prior probability has two terms:
-        # - How much information is contained within the dag
-        # - How likely is that this node has this amount of parents within this DAG
-        dag_likelihood = parents_amount * math.log(structure_prior / sample_size)
-        variable_likelihood = (sample_size - parents_amount) * math.log(1 - (structure_prior / sample_size))
-
-        return dag_likelihood + variable_likelihood
-
     def global_score(self, dag):
         """
         Computes the global BDeu score of the specified DAG.
@@ -257,7 +217,40 @@ class BDeuScore:
 
         return new_score - original_score
 
-    # COUNT FUNCTIONS #
+    # UTILITY FUNCTIONS #
+
+    def _get_local_prior_probability(self, parents_amount):
+        """
+        Computes the prior probability of a variable having the specified list of parents.
+
+        Essentially, computes how likely this family would be, penalizing variables with an excessive
+        amount of parents.
+
+        This implementation is based on Tetrad's BDeu scorer.
+
+        Parameters
+        ----------
+        parents_amount: int
+            Number of parents contained by the variable
+
+        Returns
+        -------
+        float
+            Local prior probability
+        """
+
+        # A constant "structure prior" probability of 1.0 is used as part of the BDeu assumptions.
+        structure_prior = 1.0
+        # A "sample size" of the number of rows is used
+        sample_size = self.data.shape[0] - 1
+
+        # The prior probability has two terms:
+        # - How much information is contained within the dag
+        # - How likely is that this node has this amount of parents within this DAG
+        dag_likelihood = parents_amount * math.log(structure_prior / sample_size)
+        variable_likelihood = (sample_size - parents_amount) * math.log(1 - (structure_prior / sample_size))
+
+        return dag_likelihood + variable_likelihood
 
     def _get_state_counts(self, variable, variable_states, parents, parent_state_combinations):
         """
@@ -271,7 +264,7 @@ class BDeuScore:
             Variable of which the states are counted
         variable_states : list[str]
             List of all states of the variable
-        parents : list[str]
+        parents : list[str] or tuple[str]
             List of parents of the variable
         parent_state_combinations : list[tuple[str]]
             List of all possible combination of parent variables' states
@@ -295,206 +288,24 @@ class BDeuScore:
 
         # Count the occurrences of each combination of variable and parent states using pandas value_counts
         # Dropna is set to false to avoid looking for NaNs
-        subset = [variable] + parents
+        subset = [variable] + list(parents) if parents else variable
         counts = self.data.value_counts(subset=subset, dropna=False)
 
         # Move the counts into the count array
         # Row: index of the original variable state (first element of each index)
         # Column: index of the parents state combination (rest of the elements of each index)
         # Count: number of instances of said combination
-        for row, column, count in [(variable_states_dict[comb[0]],
-                                    parent_states_dict[comb[:1]],
-                                    counts[comb]) for comb in counts.index]:
 
-            # Update the count
-            counts_array[row, column] = count
-
-    def _get_state_counts_unique(self, variable, variable_states, parents, parent_state_combinations):
-        """
-        For each combination of parent states, returns the count of each variable state.
-
-        This method utilizes masks to filter the numpy array.
-
-        Parameters
-        ----------
-        variable : str
-            Variable of which the states are counted
-        variable_states : list[str]
-            List of all states of the variable
-        parents : list[str]
-            List of parents of the variable
-        parent_state_combinations : list[tuple[str]]
-            List of all possible combination of parent variables' states
-
-        Returns
-        -------
-        np.ndarray
-            Array where each row represents a state of the variable, each column represents
-            a combination of parent variable states and each cell represents the count of said
-            variable state for the given parents
-        """
-
-        # Initialize the numpy array to be returned
-        counts_array = np.zeros((len(variable_states), len(parent_state_combinations)))
-
-        # Generate dictionaries to know the index of each element (both variable and parent combination)
-        variable_states_dict = {state: index for index, state in enumerate(variable_states)}
-        parent_states_dict = {state_combination: index
-                              for index, state_combination
-                              in enumerate(parent_state_combinations)}
-
-        # Generate the list of parent indices to consider
-        parent_indices = [self.node_index[parent] for parent in parents]
-
-        # Add the actual variable index to the front
-        indices = [self.node_index[variable]] + parent_indices
-
-        # Slice the numpy array using said indices
-        sliced_array = self.data[:, indices]
-
-        # Count the occurrences of each combination of variable and parent states using unique
-        state_combinations, state_combinations_counts = np.unique(sliced_array, axis=0, return_counts=True)
-
-        # Move the counts into the numpy array
-        for state_combination, state_combination_count in zip(state_combinations, state_combinations_counts):
-            # Get the row and column
-            row = variable_states_dict[state_combination[0]]
-            column = parent_states_dict[tuple(state_combination[1:])]
-
-            # Update the count
-            counts_array[row, column] = state_combination_count
+        # Variables without parents have to be treated differently
+        if not parents:
+            for column, count in [(variable_states_dict[comb], counts[comb]) for comb in counts.index]:
+                # Update the count
+                counts_array[column] = count
+        else:
+            for row, column, count in [(variable_states_dict[comb[0]],
+                                        parent_states_dict[comb[1:]],
+                                        counts[comb]) for comb in counts.index]:
+                # Update the count
+                counts_array[row, column] = count
 
         return counts_array
-
-    def _get_state_counts_forloop(self, variable, variable_states, parents, parent_state_combinations):
-        """
-        For each combination of parent states, returns the count of each variable state.
-
-        This method manually counts the instances of each state variable using a for loop.
-
-        Parameters
-        ----------
-        variable : str
-            Variable of which the states are counted
-        variable_states : list[str]
-            List of all states of the variable
-        parents : list[str]
-            List of parents of the variable
-        parent_state_combinations : list[tuple[str]]
-            List of all possible combination of parent variables' states
-
-        Returns
-        -------
-        np.ndarray
-            Array where each row represents a state of the variable, each column represents
-            a combination of parent variable states and each cell represents the count of said
-            variable state for the given parents
-        """
-
-        # Initialize the numpy array to be returned
-        counts_array = np.zeros((len(variable_states), len(parent_state_combinations)))
-
-        # Generate dictionaries to know the index of each element (both variable and parent combination)
-        variable_states_dict = {state: index for index, state in enumerate(variable_states)}
-        parent_states_dict = {state_combination: index
-                              for index, state_combination
-                              in enumerate(parent_state_combinations)}
-
-        # Loop through all elements in the array and manually count the instances
-        for row in self.data:
-
-            # Find the tuple of parent values
-            parent_states = tuple([row[self.node_index[parent]] for parent in parents])
-            # Find the value of the variable
-            state = row[self.node_index[variable]]
-
-            # Increment the appropriate cell
-            counts_array[variable_states_dict[state], parent_states_dict[parent_states]] += 1
-
-        return counts_array
-
-    def _get_state_counts_masks(self, variable, variable_states, parents, parent_state_combinations):
-        """
-        For each combination of parent states, returns the count of each variable state.
-
-        This method utilizes masks to filter the numpy array.
-
-        Parameters
-        ----------
-        variable : str
-            Variable of which the states are counted
-        variable_states : list[str]
-            List of all states of the variable
-        parents : list[str]
-            List of parents of the variable
-        parent_state_combinations : list[tuple[str]]
-            List of all possible combination of parent variables' states
-
-        Returns
-        -------
-        np.ndarray
-            Array where each row represents a state of the variable, each column represents
-            a combination of parent variable states and each cell represents the count of said
-            variable state for the given parents
-        """
-
-        # Initialize the numpy array to be returned
-        counts_array = np.zeros((len(variable_states), len(parent_state_combinations)))
-
-        # Generate and apply all necessary masks
-        masks = self._get_array_masks(parents, parent_state_combinations)
-        for mask_index, mask in enumerate(masks):
-
-            # Apply the mask to the data array to only keep the relevant columns
-            masked_data = self.data[mask]
-
-            # Count the instances of the child variable for each state
-            variable_index = self.node_index[variable]
-            masked_variable = masked_data[:, variable_index]
-            states, state_counts = np.unique(masked_variable, return_counts=True)
-            counts_dict = dict(zip(states, state_counts))
-
-            # Store the counts for each variable state
-            for state_index, state in enumerate(variable_states):
-
-                # If the state has not appeared in the count, it is set to zero
-                counts_array[state_index, mask_index] = counts_dict[state] if state in counts_dict else 0
-
-        return counts_array
-
-    def _get_array_masks(self, parents, parent_state_combinations):
-        """
-        Generates all array masks to apply over the data array
-
-        Parameters
-        ----------
-        parents : list[str]
-            List of parents of the variable
-        parent_state_combinations : list[tuple[str]]
-            List of all possible combination of parent variables' states
-
-        Returns
-        -------
-        list[np.ndarray]
-            List of all masks to apply to the data
-        """
-
-        # Create a list to store all possible masks
-        masks = []
-
-        # For each combination of parents, generate a mask
-        for combination in parent_state_combinations:
-
-            # Generate an initial, all true mask equal to the length of the data array
-            mask = np.full(self.data.shape[0], True)
-
-            # Apply the appropriate condition for all parent states
-            for parent, parent_state in zip(parents, combination):
-
-                parent_index = self.node_index[parent]
-                mask = mask & (self.data[:, parent_index] == parent_state)
-
-            # Store the mask
-            masks.append(mask)
-
-        return masks

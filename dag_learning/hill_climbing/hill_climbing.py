@@ -292,7 +292,7 @@ class HillClimbing(BaseAlgorithm):
 
         # Create a bayesian network based on the currently learned DAG with the dataset used
         # and for log likelihood scoring
-        current_bn = dag.to_bayesian_network(self.dataframe, self.bayesian_network.states)
+        current_bn = dag.to_bayesian_network(self.data, self.bayesian_network.states)
 
         # Local score
         empty_score = self.local_scorer.global_score(empty_dag)
@@ -389,8 +389,6 @@ class HillClimbing(BaseAlgorithm):
         self.results_logger.write_line("# EXPERIMENT ###########################\n\n")
         self.results_logger.write_line("# * Algorithm used: HillClimbing\n")
         self.results_logger.write_line("#\t - Score method used: {}\n".format(self.score_type))
-        self.results_logger.write_line("#\t - Frequency counting methodology: {}\n".format(
-            self.local_scorer.count_method))
         self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.local_scorer.esz))
 
         # Write the dataset info
