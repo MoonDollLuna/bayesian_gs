@@ -10,4 +10,5 @@ This module contains all classes related to BDeu score computations and storing.
 from .statistics_utils import average_markov_blanket, structural_moral_hamming_distance, percentage_difference
 
 # Scorers
-from .bdeu_score import BDeuScore
+from .serialized.base_score import BaseScore
+from .serialized.bdeu_score import BDeuScore

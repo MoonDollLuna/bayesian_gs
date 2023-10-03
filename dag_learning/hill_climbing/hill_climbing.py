@@ -389,7 +389,10 @@ class HillClimbing(BaseAlgorithm):
         self.results_logger.write_line("# EXPERIMENT ###########################\n\n")
         self.results_logger.write_line("# * Algorithm used: HillClimbing\n")
         self.results_logger.write_line("#\t - Score method used: {}\n".format(self.score_type))
-        self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.local_scorer.esz))
+
+        # Depending on the scorer used, different attributes might be shown
+        if self.score_type == "bdeu":
+            self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.local_scorer.esz))
 
         # Write the dataset info
         self.results_logger.write_line("# * Dataset used: {}\n\n".format(self.results_logger.file_name))

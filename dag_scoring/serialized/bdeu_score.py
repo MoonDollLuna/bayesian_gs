@@ -12,9 +12,10 @@ import numpy as np
 from scipy.special import gammaln
 from pgmpy.base import DAG
 
+from dag_scoring import BaseScore
 
-# TODO - Make a generic Scorer class for the methods that are required
-class BDeuScore:
+
+class BDeuScore(BaseScore):
     """
     Class designed for DAG and Bayesian Network structure scoring based on the Bayesian Dirichlet
     log-equivalent uniform (BDeu) score.
@@ -68,7 +69,7 @@ class BDeuScore:
     # SCORE FUNCTIONS #
 
     @lru_cache(maxsize=None)
-    def local_score(self, variable, parents):
+    def local_score(self, node, parents):
         """
         Computes the local BDeu score for a variable given a list of parents.
 
@@ -81,7 +82,7 @@ class BDeuScore:
 
         Parameters
         ----------
-        variable: str
+        node: str
             Child variable of which the BDeu score is being computed
         parents: tuple[str]
             List of parent variables that influence the child variable. If the variables
@@ -96,7 +97,7 @@ class BDeuScore:
         # PRE - PROCESSING #
 
         # Get the variable states and number of possible values
-        variable_states = self.node_values[variable]
+        variable_states = self.node_values[node]
         variable_length = len(variable_states)
 
         # Generate a list with all possible parent values (per variable)
@@ -108,7 +109,7 @@ class BDeuScore:
         parent_state_combinations = list(product(*parent_states))
 
         # Get the count of each variable state for each combination of parents
-        state_counts = self._get_state_counts(variable, variable_states, parents, parent_state_combinations)
+        state_counts = self._get_state_counts(node, variable_states, parents, parent_state_combinations)
 
         # BDEU CALCULATION #
 
@@ -190,7 +191,7 @@ class BDeuScore:
 
         return score
 
-    def local_score_delta(self, node, original_parents, new_parents):
+    def local_score_delta(self, node, original_parents, new_parents, *args, **kwargs):
         """
         Given a node and the original and new set of parents (after an operation to add, remove
         or invert and edge), computes the difference in local score between the new and old set of parents.

@@ -10,10 +10,10 @@ from numpy import ndarray
 from pgmpy.models import BayesianNetwork
 from pandas import DataFrame, read_csv
 
-from dag_scoring import BDeuScore
+from dag_scoring import BaseScore, BDeuScore
 from utils import ResultsLogger
 
-from typing import Optional, Any
+from typing import Optional
 
 
 class BaseAlgorithm:
@@ -77,7 +77,7 @@ class BaseAlgorithm:
     # Score method used
     score_type: str
     # Local scorer
-    local_scorer: Any
+    local_scorer: BaseScore
     # Log manager
     results_logger: Optional[ResultsLogger]
 
@@ -100,8 +100,9 @@ class BaseAlgorithm:
             # If a path to a CSV file is given, read the data from it and extract the input file name
             if isinstance(data, str):
                 output_file_name = os.path.splitext(os.path.basename(data))[0]
+
                 # Data is always read as string, to avoid data type sniffing
-                # In addition, no values are interpreted as NaN
+                # In addition, no values are interpreted as NaN to avoid converting Nones into NaNs
                 data = read_csv(data, dtype=str, keep_default_na=False)
 
             # Store the data and extract the nodes
@@ -117,12 +118,13 @@ class BaseAlgorithm:
             # Create a Pandas dataframe from the given information
             self.data = DataFrame(data=data, columns=nodes)
             self.nodes = nodes
+
         else:
             raise TypeError("Data must be provided as a CSV file, a Pandas dataframe or a Numpy array.")
 
-        # Check if an input name has been given, if required
+        # Check if an output name has been given, if required
         if results_path and not output_file_name:
-            raise AttributeError("An input file name must be specified if results logging is used.")
+            raise AttributeError("An output file name must be specified if results logging is used.")
 
         # If a bayesian network is specified, store it for structure checks
         self.bayesian_network = bayesian_network
@@ -132,8 +134,6 @@ class BaseAlgorithm:
             self.score_type = "bdeu"
             equivalent_sample_size = score_arguments["bdeu_equivalent_sample_size"] if \
                 ("bdeu_equivalent_sample_size" in score_arguments) else 10
-            count_method = score_arguments["bdeu_count_method"] if \
-                ("bdeu_count_method" in score_arguments) else "unique"
 
             self.local_scorer = BDeuScore(self.data, equivalent_sample_size=equivalent_sample_size)
         else:
