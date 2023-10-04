@@ -12,8 +12,8 @@ from itertools import permutations
 import networkx as nx
 from pgmpy.base import DAG
 
-
 # OPERATION COMPUTATION #
+
 
 def find_legal_hillclimbing_operations(dag):
     """
@@ -152,5 +152,5 @@ def _is_legal_inversion(dag, source, target):
     if edge_removed:
         dag.add_edge(source, target)
 
-    # The inversion is legal if the path is not found
+    # The inversion is legal if a path is not found
     return not path_found

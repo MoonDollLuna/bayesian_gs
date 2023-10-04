@@ -498,7 +498,7 @@ class HillClimbing(BaseAlgorithm):
             print("\t * Time taken in this iteration: {} secs".format(time_taken_delta))
             print("")
 
-        # Verbosity 6 checks (DAG nodes and edges) is purely for debug and is printed outside of this method
+        # Verbosity 6 checks (DAG nodes and edges) are purely for debug and is printed outside of this method
 
     def _write_final_results(self, dag, verbose, score, empty_score, score_improvement, score_improvement_percent,
                              total_operations, add_operations, remove_operations, invert_operations,

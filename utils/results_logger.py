@@ -17,6 +17,11 @@ class ResultsLogger:
     "ResultsLogger" provides a wrapper for a CSV writer, containing all necessary methods to create and handle
     a CSV results file - including headers, column names, data writing and commentaries for final results.
 
+    "ResultsLogger" also includes methods for:
+
+        - Writing comment blocks with variable number of details.
+        - Writing headers and iteration data.
+
     The resulting results file will have "<input_name>_<creation time>.csv" as a name.
 
     Parameters
@@ -94,13 +99,14 @@ class ResultsLogger:
         self._csv_writer.close()
         self._file.close()
 
-    # LOG MANAGEMENT
+    # INTERNAL LOG MANAGEMENT
     # NOTE - Since headers and final results do not have constant formats (since the data shown might depend on the
     # specified parameters), both header and results should be printed using comments.
 
-    def write_line(self, line):
+    def write_line(self, line, printed=False, remove_leading_characters=True):
         """
-        Directly writes a line into the file by bypassing the CSV writer.
+        Directly writes a line into the file by bypassing the CSV writer. If specified, the line is also printed
+        as-is into the console.
 
         Can be used to:
         - Write comments (by starting the line with #)
@@ -110,9 +116,20 @@ class ResultsLogger:
         ----------
         line: str
             Line to write into the file
+        printed: bool
+            If True, line is also printed into the console.
+        remove_leading_characters: bool
+            If True, all leading characters ("" and white space) will be removed.
         """
 
         self._file.write(line)
+        if printed:
+
+            # Preprocess the string
+            if remove_leading_characters:
+                line = line.strip("# ")
+
+            print(line, end="")
 
     def write_data_row(self, data):
         """
@@ -140,3 +157,60 @@ class ResultsLogger:
 
             # Update the timer
             self.last_update_time = time.time()
+
+    # LOG AND PRINTING METHODS
+    # NOTE - These methods will both write to the log and print to the screen according to the specified verbosity.
+
+    def write_comment_block(self, block_title, data_dictionary, verbosity):
+        """
+        Writes and prints the information specified within data_dictionary as a "comment block" (data
+        that is not part of an iteration, and that should not be read from a CSV file).
+
+        data_dictionary is expected to have the following structure:
+
+        {
+            ("<data_name>", tab, verbosity): (value, unit)
+        }
+
+        Where:
+
+            - "data_name": Name (as an elaborated string) of the variable.
+            - "tab": Boolean, if true, the value is tabulated.
+            - "verbosity": Expected verbosity of this value. If the current verbosity is lower, it will not
+                           be printed to the screen (BUT IT WILL STILL BE LOGGED)
+            - "value": Actual value to be printed
+            - "unit": If not None, unit to specify (f.ex. secs, %...)
+
+        Parameters
+        ----------
+        block_title: str
+            Header of the comment block
+        data_dictionary: dict
+            Dictionary with the data, using the specified name
+        verbosity: int
+            Current verbosity of the terminal. Verbosity will be checked against the data to see what information
+            needs to be printed. If verbosity is 0 or lower, no console logging will be done at all.
+        """
+
+        # Block start and block title
+        self.write_line("########################################\n")
+        self.write_line(f"# {block_title}\n\n", printed=(verbosity > 0))
+
+        # Dictionary values
+        for (data_name, data_tab, data_verbosity), (data_value, data_unit) in data_dictionary.items():
+
+            # Check whether the verbosity is valid
+            valid_verbosity = (verbosity > 0) and (verbosity >= data_verbosity)
+
+            # A different string is prepared depending on whether a tab is needed or not
+            if not data_tab:
+                self.write_line(f"# - {data_name}: {data_value} {data_unit}\n",
+                                printed=valid_verbosity)
+            else:
+                self.write_line(f"#\t * {data_name}: {data_value} {data_unit}\n",
+                                printed=valid_verbosity)
+
+        # Block end
+        self.write_line("\n########################################\n\n")
+
+# TODO METHODS FOR DATA WRITING AND DAG WRITING
