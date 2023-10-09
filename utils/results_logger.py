@@ -6,8 +6,9 @@
 import os.path
 from pathlib import Path
 import csv
-
 import time
+
+from dag_architectures import ExtendedDAG
 
 from typing import IO, Any
 
@@ -19,8 +20,10 @@ class ResultsLogger:
 
     "ResultsLogger" also includes methods for:
 
-        - Writing comment blocks with variable number of details.
-        - Writing headers and iteration data.
+    - Writing and logging comment blocks for experiment initialization and final results.
+    - Writing iteration data.
+
+    Note that iteration data console logging (NOT file writing) should be performed directly by the algorithm.
 
     The resulting results file will have "<input_name>_<creation time>.csv" as a name.
 
@@ -161,7 +164,7 @@ class ResultsLogger:
     # LOG AND PRINTING METHODS
     # NOTE - These methods will both write to the log and print to the screen according to the specified verbosity.
 
-    def write_comment_block(self, block_title, data_dictionary, verbosity):
+    def write_comment_block(self, block_title, data_dictionary, verbosity, minimum_verbosity):
         """
         Writes and prints the information specified within data_dictionary as a "comment block" (data
         that is not part of an iteration, and that should not be read from a CSV file).
@@ -169,17 +172,16 @@ class ResultsLogger:
         data_dictionary is expected to have the following structure:
 
         {
-            ("<data_name>", tab, verbosity): (value, unit)
+            "<data_name>": (value, unit, tab)
         }
 
         Where:
-
             - "data_name": Name (as an elaborated string) of the variable.
-            - "tab": Boolean, if true, the value is tabulated.
-            - "verbosity": Expected verbosity of this value. If the current verbosity is lower, it will not
-                           be printed to the screen (BUT IT WILL STILL BE LOGGED)
             - "value": Actual value to be printed
             - "unit": If not None, unit to specify (f.ex. secs, %...)
+            - "tab": Boolean, if true, the value is tabulated.
+
+        Data will only be printed if verbosity exceeds the minimum expected verbosity
 
         Parameters
         ----------
@@ -188,29 +190,60 @@ class ResultsLogger:
         data_dictionary: dict
             Dictionary with the data, using the specified name
         verbosity: int
-            Current verbosity of the terminal. Verbosity will be checked against the data to see what information
-            needs to be printed. If verbosity is 0 or lower, no console logging will be done at all.
+            Current verbosity of the terminal.
+        minimum_verbosity: int
+            Minimum verbosity required to log the information to the terminal. Terminal logging is skipped
+            if this value is not reached
         """
+
+        logging = verbosity >= minimum_verbosity
 
         # Block start and block title
         self.write_line("########################################\n")
-        self.write_line(f"# {block_title}\n\n", printed=(verbosity > 0))
+        self.write_line(f"# {block_title}\n\n", printed=logging)
 
         # Dictionary values
-        for (data_name, data_tab, data_verbosity), (data_value, data_unit) in data_dictionary.items():
-
-            # Check whether the verbosity is valid
-            valid_verbosity = (verbosity > 0) and (verbosity >= data_verbosity)
+        for data_name, (data_value, data_unit, data_tab) in data_dictionary.items():
 
             # A different string is prepared depending on whether a tab is needed or not
             if not data_tab:
                 self.write_line(f"# - {data_name}: {data_value} {data_unit}\n",
-                                printed=valid_verbosity)
+                                printed=logging)
             else:
                 self.write_line(f"#\t * {data_name}: {data_value} {data_unit}\n",
-                                printed=valid_verbosity)
+                                printed=logging)
 
         # Block end
         self.write_line("\n########################################\n\n")
 
-# TODO METHODS FOR DATA WRITING AND DAG WRITING
+    def write_dag_block(self, dag, verbosity, minimum_verbosity):
+        """
+        Writes and prints all the edges contained within a Directed Acyclic Graph (DAG) as a "comment block" (data
+        that is not part of an iteration, and that should not be read from a CSV file).
+
+        Data will only be printed if verbosity exceeds the minimum expected verbosity
+
+        Parameters
+        ----------
+        dag: ExtendedDAG
+            DAG to print and log
+        verbosity: int
+            Current verbosity of the terminal.
+        minimum_verbosity: int
+            Minimum verbosity required to log the information to the terminal. Terminal logging is skipped
+            if this value is not reached
+        """
+
+        logging = verbosity >= minimum_verbosity
+
+        # Block start and block title
+        self.write_line("########################################\n")
+        self.write_line("# FINAL DAG\n\n", printed=logging)
+
+        # Convert the DAG to a set of strings and write them
+        dag_strings = str(dag).split("; ")
+        for dag_string in dag_strings:
+            self.write_line("# " + dag_string, printed=logging)
+
+        # Block end
+        self.write_line("\n########################################\n\n")
