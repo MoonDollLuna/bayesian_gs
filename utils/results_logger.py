@@ -61,22 +61,25 @@ class ResultsLogger:
     # CONSTRUCTOR #
     def __init__(self, results_path, output_name, flush_frequency):
 
-        # Check if the path exists and, if necessary, create the folders
-        if not os.path.exists(results_path):
-            Path(results_path).mkdir(parents=True, exist_ok=True)
+        # Only create the file if a path has been specified
+        if results_path:
 
-        # Store the current time and the flush frequency
-        self.last_update_time = time.time()
-        self.flush_frequency = flush_frequency
+            # Check if the path exists and, if necessary, create the folders
+            if not os.path.exists(results_path):
+                Path(results_path).mkdir(parents=True, exist_ok=True)
 
-        # Create the input file name
-        # <output_name>_<time>.csv
-        self.file_name = "{}_{}.csv".format(output_name, self.last_update_time)
-        # Create the path for the actual file
-        self.file_path = os.path.join(results_path, self.file_name)
+            # Store the current time and the flush frequency
+            self.last_update_time = time.time()
+            self.flush_frequency = flush_frequency
 
-        # Create the file and store the handles
-        self._create_results_file(self.file_path)
+            # Create the input file name
+            # <output_name>_<time>.csv
+            self.file_name = "{}_{}.csv".format(output_name, self.last_update_time)
+            # Create the path for the actual file
+            self.file_path = os.path.join(results_path, self.file_name)
+
+            # Create the file and store the handles
+            self._create_results_file(self.file_path)
 
     # FILE AND PATH MANAGEMENT
     def _create_results_file(self, file_path):
@@ -96,11 +99,11 @@ class ResultsLogger:
 
     def close_results_file(self):
         """
-        Closes both file handles orderly to release system resources
+        Closes both file handles orderly to release system resources. Only works if a file exists.
         """
-
-        self._csv_writer.close()
-        self._file.close()
+        if self._csv_writer:
+            self._csv_writer.close()
+            self._file.close()
 
     # INTERNAL LOG MANAGEMENT
     # NOTE - Since headers and final results do not have constant formats (since the data shown might depend on the
@@ -125,9 +128,9 @@ class ResultsLogger:
             If True, all leading characters ("" and white space) will be removed.
         """
 
-        self._file.write(line)
+        if self._csv_writer:
+            self._file.write(line)
         if printed:
-
             # Preprocess the string
             if remove_leading_characters:
                 line = line.strip("# ")
@@ -150,16 +153,17 @@ class ResultsLogger:
         """
 
         # Write the row of data
-        self._csv_writer.writerow(data)
+        if self._csv_writer:
+            self._csv_writer.writerow(data)
 
-        # Check the time that has passed and, if necessary, flush the file
-        if time.time() - self.last_update_time > self.flush_frequency:
+            # Check the time that has passed and, if necessary, flush the file
+            if time.time() - self.last_update_time > self.flush_frequency:
 
-            # Flush the file
-            self._file.flush()
+                # Flush the file
+                self._file.flush()
 
-            # Update the timer
-            self.last_update_time = time.time()
+                # Update the timer
+                self.last_update_time = time.time()
 
     # LOG AND PRINTING METHODS
     # NOTE - These methods will both write to the log and print to the screen according to the specified verbosity.

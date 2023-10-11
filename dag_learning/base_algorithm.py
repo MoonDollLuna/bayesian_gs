@@ -76,10 +76,11 @@ class BaseAlgorithm:
 
     # Score method used
     score_type: str
+    # TODO - MAKE THIS EITHER BASESCORE OR BASEPARALLELSCORE
     # Local scorer
     local_scorer: BaseScore
     # Log manager
-    results_logger: Optional[ResultsLogger]
+    results_logger: ResultsLogger
 
     # DAG storage #
     # Path to store the DAG
@@ -140,11 +141,8 @@ class BaseAlgorithm:
             # Currently, only BDeu is implemented
             raise NotImplementedError("Only BDeu scoring is currently available")
 
-        # If required, create the Results Logger
-        if results_path:
-            self.results_logger = ResultsLogger(results_path, output_file_name, flush_frequency)
-        else:
-            self.results_logger = None
+        # Create the Results Logger. If no path is specified, only console logging will be considered
+        self.results_logger = ResultsLogger(results_path, output_file_name, flush_frequency)
 
         # If specified, store both DAG path and name
         self.dag_path = resulting_bif_path
