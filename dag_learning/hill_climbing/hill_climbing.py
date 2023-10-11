@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tqdm import tqdm
 
+from typing import Iterable
+
 from dag_learning import BaseAlgorithm, find_legal_hillclimbing_operations
 from dag_scoring import average_markov_blanket, structural_moral_hamming_distance, percentage_difference
 from dag_architectures import ExtendedDAG
@@ -64,13 +66,12 @@ class HillClimbing(BaseAlgorithm):
                 - 3: Action taken for each step is printed
                 - 4: Intermediate results for each step are printed
                 - 5: Graph is printed (as a string)
-                - 6: DAG is directly printed
         log_likelihood_size: int, default=1000
             Size of the data sample generated for the log likelihood score
 
         Returns
         -------
-        ExtendedDAG
+        (ExtendedDAG, dict)
         """
 
         # LOCAL VARIABLE DECLARATION #
@@ -82,14 +83,14 @@ class HillClimbing(BaseAlgorithm):
         # Iterations performed
         iterations: int = 0
 
-        # Total operations checked and operations that needed new local score calculations
-        total_operations: int = 0
-        computed_operations: int = 0
+        # Total checks and checks that needed to be computed
+        total_checks: int = 0
+        computed_checks: int = 0
 
-        # Number of operations performed of each type
-        add_operations: int = 0
-        remove_operations: int = 0
-        invert_operations: int = 0
+        # Number of actions performed of each type
+        add_actions: int = 0
+        remove_actions: int = 0
+        invert_actions: int = 0
 
         # Initial time and current time taken by the algorithm
         initial_time: float = time()
@@ -112,10 +113,24 @@ class HillClimbing(BaseAlgorithm):
 
         # MAIN LOOP #
 
-        # If results logging is used, write the initial header and the column names
-        if self.results_logger:
-            self._write_header(initial_time)
-            self._write_column_names()
+        # Write the initial header info - depending on the scoring method, different data might be shown
+        header_dictionary = {
+            "Algorithm used": ("Hill Climbing", None, False),
+            "Score method used": (self.score_type, None, True)
+        }
+
+        if self.score_type == "bdeu":
+            header_dictionary["Equivalent sample size"] = (self.local_scorer.esz, None, True)
+
+        header_dictionary.update({
+            "Dataset used": (self.dag_name, None, False),
+            "Date": (datetime.datetime.fromtimestamp(initial_time), None, False),
+            "Timestamp for the date": (initial_time, None, True)
+        })
+
+        self.results_logger.write_comment_block("EXPERIMENT DETAILS", header_dictionary,
+                                                verbosity=verbose, minimum_verbosity=1)
+        self._write_column_names()
 
         # Compute the initial score
         # It is assumed that none of these scores will have been computed before
@@ -124,16 +139,16 @@ class HillClimbing(BaseAlgorithm):
             best_score += self.local_scorer.local_score(node, tuple(dag.get_parents(node)))
 
             # Update the metrics
-            computed_operations += 1
-            total_operations += 1
+            computed_checks += 1
+            total_checks += 1
 
         # Log the initial iteration (iteration 0) - this data should not be printed on screen
         initial_time_taken = time() - initial_time
         self._write_iteration_data(0, iterations, "None", "None", "None",
-                                   best_score, best_score, computed_operations, computed_operations,
-                                   total_operations, total_operations, initial_time_taken, initial_time_taken)
+                                   best_score, best_score, computed_checks, computed_checks,
+                                   total_checks, total_checks, initial_time_taken, initial_time_taken)
 
-        # If necessary, output the initial score
+        # If necessary, output the initial score - this will not be logged
         if verbose >= 4:
             print("Initial score: {}".format(best_score))
 
@@ -222,7 +237,7 @@ class HillClimbing(BaseAlgorithm):
                     score_delta = action_score_delta
                     action_taken = (action, (X, Y))
 
-            # ALL OPERATIONS TRIED
+            # ALL ACTIONS TRIED
 
             # Check if an operation was chosen
             if action_taken:
@@ -232,13 +247,13 @@ class HillClimbing(BaseAlgorithm):
 
                 if operation == "add":
                     dag.add_edge(X, Y)
-                    add_operations += 1
+                    add_actions += 1
                 elif operation == "remove":
                     dag.remove_edge(X, Y)
-                    remove_operations += 1
+                    remove_actions += 1
                 elif operation == "invert":
                     dag.invert_edge(X, Y)
-                    invert_operations += 1
+                    invert_actions += 1
 
                 # Store the best score
                 best_score = current_best_score
@@ -262,21 +277,21 @@ class HillClimbing(BaseAlgorithm):
             time_taken_delta = new_time_taken - time_taken
             time_taken = new_time_taken
 
-            # Operations performed (true computations and all computations including cache lookups)
-            current_computed_operations = self.local_scorer.local_score.cache_info().misses
-            current_total_operations = self.local_scorer.local_score.cache_info().hits + \
-                                       self.local_scorer.local_score.cache_info().misses
+            # Actions performed (true computations and all computations including cache lookups)
+            current_total_checks = self.local_scorer.local_score.cache_info().hits + \
+                                   self.local_scorer.local_score.cache_info().misses
+            current_computed_checks = self.local_scorer.local_score.cache_info().misses
 
-            computed_operations_delta = current_computed_operations - computed_operations
-            total_operations_delta = current_total_operations - total_operations
+            total_checks_delta = current_total_checks - total_checks
+            computed_checks_delta = current_computed_checks - computed_checks
 
-            computed_operations = current_computed_operations
-            total_operations = current_total_operations
+            total_checks = current_total_checks
+            computed_checks = current_computed_checks
 
             # Print and log the required information as applicable
             self._write_iteration_data(verbose, iterations, action_str, origin, destination,
-                                       best_score, score_delta, computed_operations, computed_operations_delta,
-                                       total_operations, total_operations_delta, time_taken, time_taken_delta)
+                                       best_score, score_delta, computed_checks, computed_checks_delta,
+                                       total_checks, total_checks_delta, time_taken, time_taken_delta)
 
             # If necessary (debugging purposes), print the full list of nodes and edges
             if verbose >= 6:
@@ -285,7 +300,7 @@ class HillClimbing(BaseAlgorithm):
                 print("")
 
         # END OF THE LOOP - DAG FINALIZED
-        # METRICS COMPUTATION
+        # METRICS COMPUTATION AND STORAGE
 
         # Create an empty DAG to compute comparative scores
         empty_dag = ExtendedDAG(self.nodes)
@@ -296,11 +311,11 @@ class HillClimbing(BaseAlgorithm):
 
         # Local score
         empty_score = self.local_scorer.global_score(empty_dag)
-        score_diff = best_score - empty_score
-        score_percent = percentage_difference(empty_score, best_score)
+        empty_diff = best_score - empty_score
+        empty_percent = percentage_difference(empty_score, best_score)
 
         # Total actions
-        total_actions = add_operations + remove_operations + invert_operations
+        total_actions = add_actions + remove_actions + invert_actions
 
         # Average Markov blanket
         average_markov = average_markov_blanket(dag)
@@ -310,19 +325,19 @@ class HillClimbing(BaseAlgorithm):
 
             # Score of the original bayesian network
             original_score = self.local_scorer.global_score(self.bayesian_network)
-            original_score_diff = best_score - original_score
-            original_score_percent = percentage_difference(original_score, best_score)
+            original_diff = best_score - original_score
+            original_percent = percentage_difference(original_score, best_score)
 
             # Average Markov blanket difference
             original_markov = average_markov_blanket(self.bayesian_network)
-            average_markov_diff = average_markov - original_markov
-            average_markov_percent = percentage_difference(original_markov, average_markov)
+            markov_diff = average_markov - original_markov
+            markov_percent = percentage_difference(original_markov, average_markov)
 
             # Structural moral hamming distance (SMHD)
-            computed_smhd = structural_moral_hamming_distance(self.bayesian_network, dag)
+            smhd = structural_moral_hamming_distance(self.bayesian_network, dag)
             empty_smhd = structural_moral_hamming_distance(self.bayesian_network, empty_dag)
-            smhd_diff = empty_smhd - computed_smhd
-            smhd_percent = percentage_difference(computed_smhd, empty_smhd)
+            smhd_diff = empty_smhd - smhd
+            smhd_percent = percentage_difference(smhd, empty_smhd)
 
             # Log likelihood of sampled data
             # Sample data from the original bayesian network
@@ -335,21 +350,53 @@ class HillClimbing(BaseAlgorithm):
             log_likelihood_diff = log_likelihood - original_log_likelihood
             log_likelihood_percent = percentage_difference(original_log_likelihood, log_likelihood)
 
-            # Print the results
-            self._write_final_results(dag, verbose, best_score, empty_score, score_diff, score_percent,
-                                      total_actions, add_operations, remove_operations, invert_operations,
-                                      computed_operations, total_operations, time_taken, average_markov,
-                                      original_markov, average_markov_diff, average_markov_percent,
-                                      computed_smhd, empty_smhd, smhd_diff, smhd_percent,
-                                      log_likelihood, original_log_likelihood,
-                                      log_likelihood_diff, log_likelihood_percent,
-                                      original_score, original_score_diff, original_score_percent)
+        # Write all the data into a dictionary that will be returned
+        final_statistics = {
+            "Final score": (best_score, None, False),
+            "Empty graph score": (empty_score, None, False),
+            "Score improvement (empty)": (empty_diff, None, True),
+            "Score improvement percentage (empty)": (empty_percent, "%", True)
+        }
 
-        # If no bayesian network is provided, print the data without its related statistics
-        else:
-            self._write_final_results(dag, verbose, best_score, empty_score, score_diff, score_percent,
-                                      total_actions, add_operations, remove_operations, invert_operations,
-                                      computed_operations, total_operations, time_taken, average_markov)
+        if self.bayesian_network:
+            final_statistics.update({
+                "Original graph score": (original_score, None, False),
+                "Score improvement (original)": (original_diff, None, True),
+                "Score improvement percentage (original)": (original_percent, "%", True)
+            })
+
+        final_statistics.update({
+            "Time taken": (time_taken, "secs", False),
+            "Total actions performed": (total_actions, None, False),
+            "Additions": (add_actions, None, True),
+            "Removals": (remove_actions, None, True),
+            "Inversions": (invert_actions, None, True),
+            "Total score values checked (including cache lookups)": (total_checks, None, False),
+            "Computed score values": (computed_checks, None, True),
+            "Average Markov blanket size": (average_markov, None, False)
+        })
+
+        if self.bayesian_network:
+            final_statistics.update({
+                "Original graph average Markov blanket size": (original_markov, None, False),
+                "Markov blanket size difference": (markov_diff, None, True),
+                "Markov blanket size percentage difference": (markov_percent, "%", True),
+                "SMHD": (smhd, None, False),
+                "Empty graph SMHD": (empty_smhd, None, True),
+                "SMHD difference": (smhd_diff, None, True),
+                "SMHD percentage difference": (smhd_percent, "%", True),
+                "Log likelihood": (log_likelihood, None, False),
+                "Original graph log likelihood": (original_log_likelihood, None, True),
+                "Log likelihood difference": (log_likelihood_diff, None, True),
+                "Log likelihood percentage difference": (log_likelihood_percent, "%", True)
+            })
+
+        # Log the final results
+        self.results_logger.write_comment_block("FINAL RESULTS", final_statistics,
+                                                verbosity=verbose, minimum_verbosity=1)
+
+        # Log the obtained DAG
+        self.results_logger.write_dag_block(dag, verbosity=verbose, minimum_verbosity=5)
 
         # If a path is specified to store the resulting DAG, the DAG will be converted into BIF format and stored
         if self.dag_path:
@@ -364,77 +411,30 @@ class HillClimbing(BaseAlgorithm):
             # Store the BIF
             BIFWriter(current_bn).write_bif(full_dag_path)
 
-        return dag
+        return dag, final_statistics
 
     # LOGGING METHODS #
 
-    def _write_header(self, timestamp):
+    def _write_column_names(self, column_names=("iteration", "action", "origin", "destination",
+                                                "score", "score_delta",
+                                                "total_checks", "total_checks_delta"
+                                                "computed_checks", "computed_checks_delta",
+                                                "time_taken", "time_taken_delta")):
         """
-        Writes the header of the log file. The header is a list of comments (started with the # character)
-        that specifies:
-
-            - Algorithm used (HillClimbing) and hyperparameters
-            - The time of the experiment (in timestamp)
-            - The time of the experiment (in date format)
+        Write the appropriate column names for the header
 
         Parameters
         ----------
-        timestamp: float
-            Timestamp of the experiment start
+        column_names: Iterable
+            Names to write to the results logger
         """
 
-        self.results_logger.write_line("########################################\n")
+        self.results_logger.write_data_row(column_names)
 
-        # Write the experiment info (hyperparameters)
-        self.results_logger.write_line("# EXPERIMENT ###########################\n\n")
-        self.results_logger.write_line("# * Algorithm used: HillClimbing\n")
-        self.results_logger.write_line("#\t - Score method used: {}\n".format(self.score_type))
-
-        # Depending on the scorer used, different attributes might be shown
-        if self.score_type == "bdeu":
-            self.results_logger.write_line("#\t - Equivalent sample size: {}\n\n".format(self.local_scorer.esz))
-
-        # Write the dataset info
-        self.results_logger.write_line("# * Dataset used: {}\n\n".format(self.results_logger.file_name))
-
-        # Write the timestamps
-        self.results_logger.write_line("# * Timestamp: {}\n".format(timestamp))
-        self.results_logger.write_line("# * Date: {}\n\n".format(datetime.datetime.fromtimestamp(timestamp)))
-
-        # Write the final indication
-        self.results_logger.write_line("# Iterations are found below\n")
-        self.results_logger.write_line("########################################\n\n")
-
-    def _write_column_names(self):
-        """
-        Write the appropriate column names for the header, those being:
-
-            - Iteration
-            - Action performed (addition, removal, inversion)
-            - Origin node
-            - Destination node
-            - Score (total)
-            - Score (delta)
-            - Newly computed operations (total)
-            - Newly computed operations (delta)
-            - Total operations (total)
-            - Total operations (delta)
-            - Time taken (total)
-            - Time taken (delta)
-        """
-
-        # Prepare the list
-        headers = ["iteration", "action", "origin", "destination",
-                   "score", "score_delta",
-                   "comp_operations", "comp_operations_delta",
-                   "total_operations", "total_operations_delta",
-                   "time_taken", "time_taken_delta"]
-
-        self.results_logger.write_data_row(headers)
-
+    # TODO Make method generic and possibly move to either utils or results logger
     def _write_iteration_data(self, verbose, iteration, action_performed, origin, destination,
-                              score, score_delta, comp_operations, comp_operations_delta,
-                              total_operations, total_operations_delta, time_taken, time_taken_delta):
+                              score, score_delta, total_checks, total_checks_delta,
+                              computed_checks, computed_checks_delta, time_taken, time_taken_delta):
         """
         Writes the iteration data, if applicable, into the results logger.
 
@@ -456,14 +456,14 @@ class HillClimbing(BaseAlgorithm):
             Total score after the iteration.
         score_delta: float
             Change in total score after the iteration.
-        comp_operations: int
-            Total computed operations (operations that needed to compute a new local score) after the iteration
-        comp_operations_delta: int
-            Difference in computed operations after the iteration
-        total_operations: int
-            Total operations (including local score lookups in the cache) after the iteration.
-        total_operations_delta: int
-            Difference in total operations after the iteration.
+        total_checks: int
+            Total checks (including local score lookups in the cache) after the iteration.
+        total_checks_delta: int
+            Difference in total checks after the iteration.
+        computed_checks: int
+            Total computed checks (actions that needed to compute a new local score) after the iteration
+        computed_checks_delta: int
+            Difference in computed checks after the iteration
         time_taken: float
             Total time taken (in secs) after the iteration.
         time_taken_delta: float
@@ -473,8 +473,8 @@ class HillClimbing(BaseAlgorithm):
         # If a results logger exists, print the iteration data
         if self.results_logger:
             it_data = [iteration, action_performed, origin, destination,
-                       score, score_delta, comp_operations, comp_operations_delta,
-                       total_operations, total_operations_delta, time_taken, time_taken_delta]
+                       score, score_delta, computed_checks, computed_checks_delta,
+                       total_checks, total_checks_delta, time_taken, time_taken_delta]
             self.results_logger.write_data_row(it_data)
 
         # Depending on the verbosity level, print the information on the console
@@ -490,195 +490,12 @@ class HillClimbing(BaseAlgorithm):
         if verbose >= 4:
             print("- Current score: {}".format(score))
             print("\t * Score delta: {}".format(score_delta))
-            print("- Computed score checks: {}".format(comp_operations))
-            print("\t * Computed score checks delta: {}".format(comp_operations_delta))
-            print("- Total score checks: {}".format(total_operations))
-            print("\t * Total score checks delta: {}".format(total_operations_delta))
+            print("- Computed score checks: {}".format(computed_checks))
+            print("\t * Computed score checks delta: {}".format(computed_checks_delta))
+            print("- Total score checks: {}".format(total_checks))
+            print("\t * Total score checks delta: {}".format(total_checks_delta))
             print("- Total time taken: {} secs".format(time_taken))
             print("\t * Time taken in this iteration: {} secs".format(time_taken_delta))
             print("")
 
-        # Verbosity 6 checks (DAG nodes and edges) are purely for debug and is printed outside of this method
-
-    def _write_final_results(self, dag, verbose, score, empty_score, score_improvement, score_improvement_percent,
-                             total_operations, add_operations, remove_operations, invert_operations,
-                             computed_scores, total_scores, time_taken,
-                             markov, original_markov=None, markov_difference=None, markov_difference_percent=None,
-                             smhd=None, empty_smhd=None, smhd_difference=None, smhd_difference_percent=None,
-                             log=None, original_log=None, log_difference=None, log_difference_percent=None,
-                             original_score=None, original_score_difference=None,
-                             original_score_difference_percent=None):
-        """
-        Write the final experiment results, if applicable, into the results logger.
-
-        If the verbosity is appropriate, the data is also printed as a console output.
-
-        Note that some arguments are optional (since some statistics require a Bayesian Network to be computed)
-
-        Parameters
-        ----------
-        dag: ExtendedDAG
-            Final DAG obtained
-        verbose: int
-            Verbosity of the program, as specified in "estimate_dag"
-        score: float
-            Total score of the final DAG
-        empty_score: float
-            Total score of an empty DAG
-        score_improvement: float
-            Score improvement between the final DAG and an empty DAG
-        score_improvement_percent: float
-            Score improvement (in percentage) between the final DAG and an empty DAG
-        total_operations: int
-            Total operations performed by the algorithm
-        add_operations: int
-            Total addition operations performed by the algorithm
-        remove_operations: int
-            Total removal operations performed by the algorithm
-        invert_operations: int
-            Total inversion operations performed by the algorithm
-        computed_scores: int
-            Total computed scores (without cache lookups)
-        total_scores: int
-            Total scores checked (including cache lookups)
-        time_taken: float
-            Time taken (in seconds) to perform the algorithm
-        markov: float
-            Average Markov blanket size of the final DAG
-        original_markov: float, optional
-            Average Markov blanket size of the original DAG
-        markov_difference: float, optional
-            Difference in Markov blanket sizes between the final and the original DAG
-        markov_difference_percent: float, optional
-            Difference (in percentage) in Markov blanket sizes between the final and the original DAG
-        smhd: int, optional
-            Structural moralized Hamming distance between the final DAG and the original DAG
-        empty_smhd: int, optional
-            Structural moralized Hamming distance between an empty DAG and the original DAG
-        smhd_difference: int, optional
-            Difference in SMHD between the final DAG and an empty DAG
-        smhd_difference_percent: float, optional
-            Difference (in percentage) in SMHD between the final DAG and an empty DAG
-        log: float, optional
-            Log likelihood of the sampled data having been generated from the new Bayesian Network
-        original_log: float, optional
-            Log likelihood of the sampled data having been generated from the original Bayesian Network
-        log_difference: float, optional
-            Difference in log likelihood between the final and the original DAG
-        log_difference_percent: float, optional
-            Difference (in percent) in log likelihood between the final and the original DAG
-        original_score: float, optional
-            Total score of the original DAG
-        original_score_difference: float, optional
-            Score improvement / difference between the original DAG and the obtained DAG
-        original_score_difference_percent: float, optional
-            Score improvement / difference (in percentage) between the original DAG and the obtained DAG
-        """
-
-        # If a results logger exists, print the iteration data
-        if self.results_logger:
-            self.results_logger.write_line("########################################\n")
-            self.results_logger.write_line("# FINAL RESULTS \n\n")
-
-            self.results_logger.write_line("# - Final score: {}\n".format(score))
-            self.results_logger.write_line("#\t * Score of an empty graph: {}\n".format(empty_score))
-            self.results_logger.write_line("#\t * Score improvement: {}\n".format(score_improvement))
-            self.results_logger.write_line("#\t * Score improvement (%): {}%\n\n".format(score_improvement_percent))
-
-            # If a bayesian network exists, also write the score for the original network
-            if self.bayesian_network:
-                self.results_logger.write_line("#\t * Score of the original graph: {}\n".format(original_score))
-                self.results_logger.write_line("#\t * Score difference: {}\n".format(original_score_difference))
-                self.results_logger.write_line(
-                    "#\t * Score difference (%): {}%\n\n".format(original_score_difference_percent))
-
-            self.results_logger.write_line("# - Time taken: {} secs\n\n".format(time_taken))
-
-            self.results_logger.write_line("# - Total operations performed: {}\n".format(total_operations))
-            self.results_logger.write_line("#\t * Additions: {}\n".format(add_operations))
-            self.results_logger.write_line("#\t * Removals: {}\n".format(remove_operations))
-            self.results_logger.write_line("#\t * Inversions: {}\n\n".format(invert_operations))
-
-            self.results_logger.write_line("# - Computed scores: {}\n".format(computed_scores))
-            self.results_logger.write_line("# - Total scores (including cache lookups): {}\n\n".format(total_scores))
-
-            self.results_logger.write_line("# - Average Markov blanket size: {}\n".format(markov))
-
-            # If a bayesian network exists, also write additional results
-            if self.bayesian_network:
-                self.results_logger.write_line(
-                    "#\t * Original average Markov blanket size: {}\n".format(original_markov))
-                self.results_logger.write_line("#\t * Markov difference: {}\n".format(markov_difference))
-                self.results_logger.write_line("#\t * Markov difference (%): {}%\n\n".format(markov_difference_percent))
-
-                self.results_logger.write_line("# - SMHD: {}\n".format(smhd))
-                self.results_logger.write_line("#\t * Empty graph SMHD: {}\n".format(empty_smhd))
-                self.results_logger.write_line("#\t * SMHD difference: {}\n".format(smhd_difference))
-                self.results_logger.write_line("#\t * SMHD difference (%): {}%\n\n".format(smhd_difference_percent))
-
-                self.results_logger.write_line("# - Log likelihood: {}\n".format(log))
-                self.results_logger.write_line("#\t * Original model log likelihood: {}\n".format(original_log))
-                self.results_logger.write_line("#\t * Log likelihood difference: {}\n".format(log_difference))
-                self.results_logger.write_line(
-                    "#\t * Log likelihood difference (%): {}%\n".format(log_difference_percent))
-
-            self.results_logger.write_line("\n")
-            self.results_logger.write_line("########################################\n")
-
-            # Format the DAG edges and print them
-            dag_edges = "# " + str(dag).replace("; ", "\n# ")
-            self.results_logger.write_line("########################################\n")
-            self.results_logger.write_line("# FINAL DAG OBTAINED \n\n")
-            self.results_logger.write_line(dag_edges)
-            self.results_logger.write_line("\n")
-            self.results_logger.write_line("########################################\n")
-
-        # If the verbosity is appropriate (1 or above), print the values on the console
-        if verbose >= 1:
-            print("\n FINAL RESULTS \n\n")
-
-            print("- Final score: {}".format(score))
-            print("\t * Score of an empty graph: {}".format(empty_score))
-            print("\t * Score improvement: {}".format(score_improvement))
-            print("\t * Score improvement (%): {}%\n".format(score_improvement_percent))
-
-            # If a bayesian network exists, also write the score for the original network
-            if self.bayesian_network:
-                print("\t * Score of the original graph: {}".format(original_score))
-                print("\t * Score difference: {}".format(original_score_difference))
-                print("\t * Score difference (%): {}%\n".format(original_score_difference_percent))
-
-            print("- Time taken: {} secs\n".format(time_taken))
-
-            print("- Total operations performed: {}".format(total_operations))
-            print("\t * Additions: {}".format(add_operations))
-            print("\t * Removals: {}".format(remove_operations))
-            print("\t * Inversions: {}\n".format(invert_operations))
-
-            print("- Computed scores: {}".format(computed_scores))
-            print("- Total scores (including cache lookups): {}\n".format(total_scores))
-
-            print("- Average Markov blanket size: {}".format(markov))
-
-            # If a bayesian network exists, also write additional results
-            if self.bayesian_network:
-                print("\t * Original average Markov blanket size: {}".format(original_markov))
-                print("\t * Markov difference: {}".format(markov_difference))
-                print("\t * Markov difference (%): {}%\n".format(markov_difference_percent))
-
-                print("- SMHD: {}".format(smhd))
-                print("\t * Empty graph SMHD: {}".format(empty_smhd))
-                print("\t * SMHD difference: {}".format(smhd_difference))
-                print("\t * SMHD difference (%): {}%".format(smhd_difference_percent))
-
-                print("- Log likelihood: {}".format(log))
-                print("\t * Original model log likelihood: {}".format(original_log))
-                print("\t * Log likelihood difference: {}".format(log_difference))
-                print("\t * Log likelihood difference (%): {}%\n".format(log_difference_percent))
-
-        # If the verbosity is appropriate (5 or above), print the edges on the console
-        if verbose >= 5:
-            print("\n FINAL NETWORK EDGES \n")
-
-            dag_edges = "- " + str(dag).replace("; ", "\n- ")
-            print(dag_edges)
+        # Verbosity 6 checks (DAG nodes and edges) are purely for debug and are printed outside of this method

@@ -209,6 +209,10 @@ class ResultsLogger:
         # Dictionary values
         for data_name, (data_value, data_unit, data_tab) in data_dictionary.items():
 
+            # Data unit automatically converts None to an empty string
+            if not data_unit:
+                data_unit = ""
+
             # A different string is prepared depending on whether a tab is needed or not
             if not data_tab:
                 self.write_line(f"# - {data_name}: {data_value} {data_unit}\n",
@@ -218,7 +222,8 @@ class ResultsLogger:
                                 printed=logging)
 
         # Block end
-        self.write_line("\n########################################\n\n")
+        self.write_line("\n########################################\n")
+        self.write_line("\n", printed=logging)
 
     def write_dag_block(self, dag, verbosity, minimum_verbosity):
         """
@@ -247,7 +252,8 @@ class ResultsLogger:
         # Convert the DAG to a set of strings and write them
         dag_strings = str(dag).split("; ")
         for dag_string in dag_strings:
-            self.write_line("# " + dag_string, printed=logging)
+            self.write_line(f"# {dag_string}\n", printed=logging)
 
         # Block end
-        self.write_line("\n########################################\n\n")
+        self.write_line("\n########################################\n")
+        self.write_line("\n", printed=logging)

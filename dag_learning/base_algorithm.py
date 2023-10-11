@@ -65,7 +65,7 @@ class BaseAlgorithm:
     # Data, variables... from the original Bayesian network, used to build the new DAG
 
     # Dataframe, used for PGMPY operations
-    data: DataFrame or None
+    data: DataFrame
     # Nodes contained within the data
     nodes: list
     # Original BN (used to compare structure results)
