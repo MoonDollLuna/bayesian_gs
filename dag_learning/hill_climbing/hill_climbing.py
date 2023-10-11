@@ -293,12 +293,6 @@ class HillClimbing(BaseAlgorithm):
                                        best_score, score_delta, computed_checks, computed_checks_delta,
                                        total_checks, total_checks_delta, time_taken, time_taken_delta)
 
-            # If necessary (debugging purposes), print the full list of nodes and edges
-            if verbose >= 6:
-                print("- Nodes: {}".format(list(dag.nodes)))
-                print("- Edges: {}".format(list(dag.edges)))
-                print("")
-
         # END OF THE LOOP - DAG FINALIZED
         # METRICS COMPUTATION AND STORAGE
 
