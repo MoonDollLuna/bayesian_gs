@@ -168,6 +168,70 @@ class ResultsLogger:
     # LOG AND PRINTING METHODS
     # NOTE - These methods will both write to the log and print to the screen according to the specified verbosity.
 
+    def print_iteration_data(self, data_dictionary, extra_data_dictionary,
+                             verbosity, minimum_verbosity, minimum_extra_verbosity):
+        """
+        Prints the relevant iteration data (both the key data and extra data) into the console log.
+
+        Both "data_dictionary" and "extra_data_dictionary" are expected to have the following structure:
+
+        {
+            "<data_name>": (value, unit, tab)
+        }
+
+        Where:
+            - "data_name": Name (as an elaborated string) of the variable.
+            - "value": Actual value to be printed
+            - "unit": If not None, unit to specify (f.ex. secs, %...)
+            - "tab": Boolean, if true, the value is tabulated.
+
+        Data will only be printed if verbosity exceeds the minimum expected verbosity
+
+        Parameters
+        ----------
+        data_dictionary: dict
+            Dictionary with the main data (action, origin and goal)
+        extra_data_dictionary: dict
+            Dictionary with extra data (current score, checks, time...)
+        verbosity: int
+            Current verbosity of the terminal.
+        minimum_verbosity: int
+            Minimum verbosity required to log the key information to the terminal. Terminal logging is skipped
+            if this value is not reached
+        minimum_extra_verbosity: int
+            Minimum verbosity required to log the extra information to the terminal. Terminal logging is skipped
+            if this value is not reached
+        """
+
+        key_logging = verbosity >= minimum_verbosity
+        extra_logging = verbosity >= minimum_extra_verbosity
+
+        # Sanity checking: If no verbosity is valid, skip the whole method
+        if not key_logging and not extra_logging:
+            return
+
+        # Go through both dictionaries sequentially
+        for index, dictionary in enumerate((data_dictionary, extra_data_dictionary)):
+
+            for data_name, (data_value, data_unit, data_tab) in dictionary.items():
+
+                # Only try to log the value if the verbosity is appropriate
+                if (index == 0 and key_logging) or (index == 1 and extra_logging):
+
+                    # Data unit automatically converts None to an empty string
+                    if not data_unit:
+                        data_unit = ""
+
+                    # A different string is prepared depending on whether a tab is needed or not
+                    if not data_tab:
+                        print(f"# - {data_name}: {data_value} {data_unit}\n", end="")
+                    else:
+                        print(f"#\t * {data_name}: {data_value} {data_unit}\n", end="")
+
+            # If necessary, print a new line
+            if (index == 0 and key_logging) or (index == 1 and extra_logging):
+                print("\n", end="")
+
     def write_comment_block(self, block_title, data_dictionary, verbosity, minimum_verbosity):
         """
         Writes and prints the information specified within data_dictionary as a "comment block" (data
@@ -215,10 +279,10 @@ class ResultsLogger:
 
             # A different string is prepared depending on whether a tab is needed or not
             if not data_tab:
-                self.write_line(f"# - {data_name}: {data_value} {data_unit}\n",
+                self.write_line(f"- {data_name}: {data_value} {data_unit}\n",
                                 printed=logging)
             else:
-                self.write_line(f"#\t * {data_name}: {data_value} {data_unit}\n",
+                self.write_line(f"\t * {data_name}: {data_value} {data_unit}\n",
                                 printed=logging)
 
         # Block end

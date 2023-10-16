@@ -130,6 +130,8 @@ class HillClimbing(BaseAlgorithm):
 
         self.results_logger.write_comment_block("EXPERIMENT DETAILS", header_dictionary,
                                                 verbosity=verbose, minimum_verbosity=1)
+
+        # Pre-write the CSV column names
         self._write_column_names()
 
         # Compute the initial score
@@ -144,9 +146,9 @@ class HillClimbing(BaseAlgorithm):
 
         # Log the initial iteration (iteration 0) - this data should not be printed on screen
         initial_time_taken = time() - initial_time
-        self._write_iteration_data(0, iterations, "None", "None", "None",
-                                   best_score, best_score, computed_checks, computed_checks,
-                                   total_checks, total_checks, initial_time_taken, initial_time_taken)
+        self.results_logger.write_data_row([iterations, "None", "None", "None",
+                                            best_score, best_score, computed_checks, computed_checks,
+                                            total_checks, total_checks, initial_time_taken, initial_time_taken])
 
         # If necessary, output the initial score - this will not be logged
         if verbose >= 4:
@@ -165,7 +167,7 @@ class HillClimbing(BaseAlgorithm):
             # Compute all possible actions for the current DAG
             actions = find_legal_hillclimbing_operations(dag)
 
-            # If necessary, print the header
+            # If necessary (TQDM not used) print the header
             if verbose == 1:
                 print("= ITERATION {}".format(iterations + 1))
 
@@ -289,9 +291,28 @@ class HillClimbing(BaseAlgorithm):
             computed_checks = current_computed_checks
 
             # Print and log the required information as applicable
-            self._write_iteration_data(verbose, iterations, action_str, origin, destination,
-                                       best_score, score_delta, computed_checks, computed_checks_delta,
-                                       total_checks, total_checks_delta, time_taken, time_taken_delta)
+            iteration_key_data = {
+                "Action taken": (action_str, None, False),
+                "Origin node": (origin, None, True),
+                "Destination node": (destination, None, True)
+            }
+
+            iteration_extra_data = {
+                "Current score": (best_score, None, False),
+                "Score delta": (score_delta, None, True),
+                "Total score values checked (including cache lookups)": (total_checks, None, False),
+                "Total score values checked delta": (total_checks_delta, None, True),
+                "Computed score values": (computed_checks, None, False),
+                "Computed score values delta": (computed_checks_delta, None, True),
+                "Total time taken": (time_taken, "secs", False),
+                "Time taken in this iteration": (time_taken_delta, "secs", True)
+            }
+
+            self.results_logger.write_data_row([iterations, action_str, origin, destination,
+                                                best_score, score_delta, computed_checks, computed_checks_delta,
+                                                total_checks, total_checks_delta, time_taken, time_taken_delta])
+            self.results_logger.print_iteration_data(iteration_key_data, iteration_extra_data,
+                                                     verbosity=verbose, minimum_verbosity=3, minimum_extra_verbosity=4)
 
         # END OF THE LOOP - DAG FINALIZED
         # METRICS COMPUTATION AND STORAGE
@@ -424,72 +445,3 @@ class HillClimbing(BaseAlgorithm):
         """
 
         self.results_logger.write_data_row(column_names)
-
-    # TODO Make method generic and possibly move to either utils or results logger
-    def _write_iteration_data(self, verbose, iteration, action_performed, origin, destination,
-                              score, score_delta, total_checks, total_checks_delta,
-                              computed_checks, computed_checks_delta, time_taken, time_taken_delta):
-        """
-        Writes the iteration data, if applicable, into the results logger.
-
-        If the verbosity is appropriate, the data is also printed as a console output.
-
-        Parameters
-        ----------
-        verbose: int
-            Verbosity of the program, as specified in "estimate_dag"
-        iteration: int
-            Current iteration of the algorithm
-        action_performed: {"add", "remove", "invert"}
-            Action chosen by the algorithm for the iteration
-        origin: str
-            Node of origin for the action
-        destination: str
-            Node of destination for the action
-        score: float
-            Total score after the iteration.
-        score_delta: float
-            Change in total score after the iteration.
-        total_checks: int
-            Total checks (including local score lookups in the cache) after the iteration.
-        total_checks_delta: int
-            Difference in total checks after the iteration.
-        computed_checks: int
-            Total computed checks (actions that needed to compute a new local score) after the iteration
-        computed_checks_delta: int
-            Difference in computed checks after the iteration
-        time_taken: float
-            Total time taken (in secs) after the iteration.
-        time_taken_delta: float
-            Time taken by the iteration.
-        """
-
-        # If a results logger exists, print the iteration data
-        if self.results_logger:
-            it_data = [iteration, action_performed, origin, destination,
-                       score, score_delta, computed_checks, computed_checks_delta,
-                       total_checks, total_checks_delta, time_taken, time_taken_delta]
-            self.results_logger.write_data_row(it_data)
-
-        # Depending on the verbosity level, print the information on the console
-
-        # Verbosity 3: Action chosen
-        if verbose >= 3:
-            print("- Action taken: {}".format(action_performed))
-            print("\t * Origin node: {}".format(origin))
-            print("\t * Destination node: {}".format(destination))
-            print("")
-
-        # Verbosity 4: Iteration values
-        if verbose >= 4:
-            print("- Current score: {}".format(score))
-            print("\t * Score delta: {}".format(score_delta))
-            print("- Computed score checks: {}".format(computed_checks))
-            print("\t * Computed score checks delta: {}".format(computed_checks_delta))
-            print("- Total score checks: {}".format(total_checks))
-            print("\t * Total score checks delta: {}".format(total_checks_delta))
-            print("- Total time taken: {} secs".format(time_taken))
-            print("\t * Time taken in this iteration: {} secs".format(time_taken_delta))
-            print("")
-
-        # Verbosity 6 checks (DAG nodes and edges) are purely for debug and are printed outside of this method
