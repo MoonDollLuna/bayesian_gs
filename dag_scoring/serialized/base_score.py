@@ -9,7 +9,7 @@ from functools import lru_cache
 
 class BaseScore:
     """
-    Abstract base clase for serialized DAG and Bayesian Network structure scoring.
+    Abstract base class for serialized DAG and Bayesian Network structure scoring.
 
     All scoring serialized methods implemented (BDeu, BIC...) must extend this class and implement
     the required methods.
