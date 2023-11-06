@@ -18,7 +18,7 @@ def _convert_to_key(node, parents):
         Iterable of parents of the node. If the node has no parents, the iterable must be empty
     """
 
-    return node, frozenset(parents)
+    return node, tuple(parents)
 
 
 class ParallelScoreCache:
@@ -26,11 +26,10 @@ class ParallelScoreCache:
     Local score cache implementation designed for efficient parallelized in-memory usage versus in-file memoizing
     (such as joblib's implementation).
 
-    The class implements a delta system that "stages" all updates before updating the main dictionary -
-    allowing the specific delta of updates to be shared amongst child processes, instead of sharing the whole
-    growing dictionary.
+    The class works by storing the expected local score for a pair of node and node parents.
 
-    In order to "apply" the delta changes, a specific method must be called to merge the results.
+    The cache keeps track of the "delta" changes of the cache, allowing for quicker sharing of exclusively
+    new dictionary values to other processes - quicker than sharing the full cache.
 
     This class is used instead of Python's built in LRU caches since Python caches are designed to work
     per-interpreter, not allowing the sharing of recorded calls.
@@ -45,15 +44,13 @@ class ParallelScoreCache:
 
     # Inner dictionary, storing the local scores for each call inputs
     _score_dict: dict
-
-    # TODO - MODIFY TO UPDATE BOTH DICTIONARIES ALWAYS, AND TO EMPTY DELTA WHEN SPECIFIED
-    # Delta dictionary, storing the temporary values
+    # Delta dictionary, storing the newest values until flushed
     _delta_dict: dict
 
     # CONSTRUCTOR #
     def __init__(self, initial_values=None):
 
-        # Initialize the dictionary and, if needed, extend it
+        # Initialize the dictionary and, if needed, extend it with the specified values
         self._score_dict = {}
         if initial_values:
             self._score_dict |= initial_values
@@ -61,12 +58,9 @@ class ParallelScoreCache:
         self._delta_dict = {}
 
     # LOOKUP METHODS
-    # TODO - MOVE INTO MAGIC METHOD
     def get_score(self, node, parents):
         """
         Returns the local score for a node and its parents, if it is contained. Otherwise, returns None.
-
-        This only checks scores in the dictionary, ignoring the unstaged (delta) scores.
 
         Parameters
         ----------
@@ -86,11 +80,10 @@ class ParallelScoreCache:
         except KeyError:
             return None
 
-    # DELTA ADDITION METHODS
-    # TODO MOVE INTO MAGIC METHOD
+    # ADDITION METHODS
     def add_score(self, node, parents, score):
         """
-        Adds (or updates) a single score to the delta dictionary.
+        Adds (or updates) a single local score
 
         Parameters
         ----------
@@ -102,11 +95,12 @@ class ParallelScoreCache:
             Local score for the pair of node and parents
         """
 
+        self._score_dict[_convert_to_key(node, parents)] = score
         self._delta_dict[_convert_to_key(node, parents)] = score
 
     def add_dictionary(self, dictionary):
         """
-        Adds a dictionary of values to the delta dictionary.
+        Adds a dictionary of values
 
         Parameters
         ----------
@@ -114,11 +108,12 @@ class ParallelScoreCache:
             Dictionary containing pairs of (node, parents) and scores
         """
 
+        self._score_dict |= dictionary
         self._delta_dict |= dictionary
 
     def aggregate_dictionaries(self, *dictionaries):
         """
-        Aggregates an indeterminate number of dictionaries of values into the delta dictionary.
+        Aggregates an indeterminate number of dictionaries of values
 
         Parameters
         ----------
@@ -127,4 +122,13 @@ class ParallelScoreCache:
         """
 
         for dictionary in dictionaries:
+            self._score_dict |= dictionary
             self._delta_dict |= dictionary
+
+    # DELTA MANAGEMENT METHODS
+    def clear_delta(self):
+        """
+        Empties the current delta values.
+        """
+
+        self._delta_dict = {}
