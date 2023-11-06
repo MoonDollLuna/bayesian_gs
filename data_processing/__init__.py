@@ -4,8 +4,9 @@
 
 """
 This module contains all data-processing related classes, including:
-    - Handling of the local BDeU scores
+    - Handling of the parallelized score caches
     - Handling of the training memory for the Neural Networks
 """
 
+from .parallel_score_cache import ParallelScoreCache
 from .training_memory import TrainingMemory
