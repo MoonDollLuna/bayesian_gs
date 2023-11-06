@@ -13,6 +13,8 @@ More specifically, this class contains:
     * Akaike Information Criterion (AIC) score
 """
 
+# TODO - ALLOW OTHERS TO USE THE FOLLOWING CLASSES
+
 # IMPORTS #
 import math
 from itertools import product
