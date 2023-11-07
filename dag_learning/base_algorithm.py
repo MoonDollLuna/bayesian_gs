@@ -94,6 +94,8 @@ class BaseAlgorithm:
                  results_path=None, output_file_name=None, flush_frequency=300,
                  resulting_bif_path=None, **score_arguments):
 
+        # TODO - INPUT DATA AND BN CAN EITHER BE A PATH OR A PANDAS / NUMPY / PGMPY BN
+
         # Process the input data
         if isinstance(data, (str, DataFrame)):
 

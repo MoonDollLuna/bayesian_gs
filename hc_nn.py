@@ -5,7 +5,8 @@
 # IMPORTS #
 
 import argparse
-import json
+import re
+from os.path import exists
 
 # TODO - Hide imports behind entry point based on chosen options to speed up
 from pgmpy.readwrite.BIF import BIFReader
@@ -17,6 +18,15 @@ from dag_architectures import ExtendedDAG
 # These dictionaries are used for simpler and faster lookup of all BNLearn bayesian networks
 # This is assuming that the original file locations are used - modify the paths if necessary
 # If a bayesian network is not included within BNLearn, the direct path to the file can also be provided.
+
+# List of valid, known BNLearn networks
+bnlearn_networks = ["asia", "cancer", "earthquake", "sachs", "survey",
+                    "alarm", "barley", "child", "insurance", "mildew", "water",
+                    "hailfinder", "hepar2", "win95pts",
+                    "andes", "diabetes", "link", "munin1", "pathfinder", "pigs",
+                    "munin", "munin2", "munin3", "munin4"]
+
+# Paths to the BIF file
 bif_paths = {"asia": "./input/bif/small/asia.bif",  # SMALL
              "cancer": "./input/bif/small/cancer.bif",
              "earthquake": "./input/bif/small/earthquake.bif",
@@ -75,202 +85,205 @@ dataset_paths = {"asia": "./input/csv/small/asia/{}/asia-{}_{}.csv",  # SMALL
 # Ensure that the entry point is safe (for multiprocessing)
 if __name__ == "__main__":
     # Create the parser
+
     parser = argparse.ArgumentParser(
-        description="Performs iterations of a hill-climbing based DAG building algorithm in order to achieve a good enough "
-                    "DAG based on the specified data.",
-        epilog="Note that if the arguments are passed using \"-c\", the rest of the arguments will be ignored."
+        description="Performs iterations of a hill-climbing based DAG building algorithm in order "
+                    "to achieve a good enough DAG based on the specified data.",
+        epilog="Note that if the arguments are passed using \"-c\", the rest of the arguments will be ignored.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
     # Add all necessary arguments
+    # Default values are directly added to the parser
 
     # JSON CONFIG #
+
     # If a JSON string is passed using config, the rest of the arguments will be ignored
     parser.add_argument("-c",
                         "--config",
-                        help="JSON string including the hyperparameters for this script. All \" characters must be escaped."
-                             " NOTE: If this argument is "
-                             "specified, the JSON string arguments will be used instead of any other specified arguments.")
+                        metavar="json_string",
+                        help="JSON string including the hyperparameters for this script. All \" characters "
+                             "must be escaped. NOTE: If this argument is specified, the JSON string arguments "
+                             "will be used instead of any other specified arguments.")
+
+    # ARGUMENTS #
 
     # Dataset used - either a known BNLearn network or the path to a CSV file.
-    csv_file = "asia"
     parser.add_argument("-ds",
                         "--dataset",
-                        metavar="{asia, cancer, earthquake...} or path",
+                        metavar="path or {asia-[1,...,10]-10000, cancer-[1,...,10]-10000...}",
                         help="Dataset used to build the DAG on. Either an already existing BNLearn Bayesian Network "
                              "(such as Asia or Andes) or the path to a CSV file may be provided. If a BNLearn Bayesian "
-                             "Network is used, a dataset number (between 1 and 10) and a dataset size (usually 10000) "
-                             "must be specified to choose which CSV file to use.")
-
-    # Dataset number (only required if a BNLearn dataset is specified)
-    csv_number = 1
-    parser.add_argument("-dsn",
-                        "--dataset_number",
-                        type=int,
-                        choices=range(1, 11),
-                        metavar="[1-10]",
-                        help="ONLY REQUIRED IF A BNLEARN DATASET IS SPECIFIED. Which of the 10 available datasets for each "
-                             "BNLearn bayesian networks should be used.")
-
-    # Dataset size (only required if a BNLearn dataset is specified)
-    csv_size = 10000
-    parser.add_argument("-dss",
-                        "-dataset_size",
-                        type=int,
-                        choices=[10000],
-                        help="ONLY REQUIRED IF A BNLEARN DATASET IS SPECIFIED. Size (in instances) of the dataset used.")
+                             "Network is used, a dataset number (between 1 and 10) and a dataset size (currently only "
+                             "10000) must be specified to choose which pre-existing CSV file to use.",
+                        default="asia-1-10000")
 
     # BIF file used for statistics - either a known BNLearn network or the path to a BIF file.
-    bif_file = "asia"
     parser.add_argument("-bif",
                         "--bif",
-                        metavar="{asia, cancer, earthquake...} or path",
-                        help="Bayesian Network used for DAG statistics after the hill climbing process. Either an already "
-                             "existing BNLearn Bayesian Network (such as Asia or Andes) or "
-                             "the path to a BIF file may be provided.")
+                        metavar="path or {asia, cancer, earthquake...}",
+                        help="Path to the Bayesian Network used for DAG statistics after the learning process. "
+                             "Either the path to a BIF file or an already existing BNLearn network (such as "
+                             "'asia', 'cancer'...) can be provided.",
+                        default="asia")
 
     # Algorithm used - which version of Hill Climbing to use
-    algorithm = "hillclimbing"
     parser.add_argument("-alg",
                         "--algorithm",
                         choices=["hillclimbing"],
-                        help="Algorithm to perform.")
+                        help="Algorithm to perform.",
+                        default="hillclimbing")
 
     # Scoring method used within the algorithm
-    score_method = "bdeu"
     parser.add_argument("-s",
                         "--score",
-                        choices=["bdeu"],
-                        help="Scoring method used to measure the quality of the DAG during the algorithm.")
+                        choices=["bdeu", "bic", "aic", "ll"],
+                        help="Scoring method used to measure the quality of the DAG during the algorithm.",
+                        default="bdeu")
 
-    # HILL CLIMBING SPECIFIC ARGUMENTS
-    # Path to the starting DAG
-    starting_dag = None
-    parser.add_argument("-hcd",
-                        "--hillclimbing_path",
-                        help="Path to the starting DAG for Hill Climbing. If not specified, an empty DAG "
-                             "will be used instead.")
-
-    # Epsilon - minimum change in score required to accept the action
-    epsilon = 0.0001
-    parser.add_argument("-hce",
-                        "--hillclimbing_epsilon",
-                        type=float,
-                        metavar="[hce >= 0.0]",
-                        help="Minimum change in score required to accept an action during Hill Climbing.")
-
-    # Maximum number of iterations
-    max_iterations = 1e6
-    parser.add_argument("-hci",
-                        "--hillclimbing_iterations",
-                        type=int,
-                        metavar="[hci > 0]",
-                        help="Maximum number of iterations performed during Hill Climbing.")
-
-    # Size of the sample used for the log likelihood
-    log_likelihood_size = 1000
-    parser.add_argument("-hcl",
-                        "--hillclimbing-loglikelihood",
-                        type=int,
-                        metavar="[hcl > 0]",
-                        help="ONLY USED IF A BIF FILE IS SPECIFIED. Size (in instances) of the sample used for "
-                             "log likelihood.")
-
-    # Verbosity (between 0 and 6)
-    verbose = 0
-    parser.add_argument("-hcv",
-                        "--hillclimbing_verbosity",
-                        choices=range(0, 7),
-                        type=int,
-                        metavar="[0-6]",
-                        help="Level of verbosity of the algorithm.")
+    # SCORE ARGUMENTS #
 
     # BDEU SPECIFIC ARGUMENTS
     # BDeu equivalent sample size
-    bdeu_equivalent_sample_size = 10
     parser.add_argument("-bdeus",
                         "--bdeu_sample_size",
                         type=int,
                         metavar="[bdeus > 0]",
-                        help="Equivalent sample size used for BDeu scoring.")
+                        help="Equivalent sample size used for BDeu scoring.",
+                        default=10)
 
-    # RESULTS LOGGING SPECIFIC ARGUMENTS
+    # Verbosity (between 0 and 6)
+    parser.add_argument("-v",
+                        "--verbosity",
+                        type=int,
+                        metavar="[v >= 0]",
+                        help="Level of verbosity of the algorithm. 0 refers to a silent algorithm",
+                        default=6)
+
+    # HILL CLIMBING ARGUMENTS #
+
+    # Path to the starting DAG
+    parser.add_argument("-hcd",
+                        "--hillclimbing_dag",
+                        metavar="path",
+                        help="Path to the starting DAG for Hill Climbing. If not specified, an empty DAG "
+                             "will be used instead.",
+                        default=None)
+
+    # Epsilon - minimum change in score required to accept the action
+    parser.add_argument("-hce",
+                        "--hillclimbing_epsilon",
+                        type=float,
+                        metavar="[hce >= 0.0]",
+                        help="Minimum change in score required to accept an action during Hill Climbing.",
+                        default=0.0001)
+
+    # Maximum number of iterations
+    parser.add_argument("-hci",
+                        "--hillclimbing_iterations",
+                        type=int,
+                        metavar="[hci > 0]",
+                        help="Maximum number of iterations performed during Hill Climbing.",
+                        default=1e6)
+
+    # Size of the sample used for the log likelihood
+    parser.add_argument("-hcl",
+                        "--hillclimbing-loglikelihood",
+                        type=int,
+                        metavar="[hcl > 0]",
+                        help="ONLY USED IF A BIF FILE IS SPECIFIED. "
+                             "Size (in instances) of the sample used for log likelihood.",
+                        default=1000)
+
+    # RESULTS ARGUMENTS #
+
     # Path to store the results (without the file name)
-    results_path = None
-    parser.add_argument("-rp",
-                        "--results_path",
-                        help="Path where the results log should be stored. NOTE: The actual file name should NOT "
-                             "be specified.")
+    parser.add_argument("-rlp",
+                        "--results_log_path",
+                        help="Folder where the results log should be stored. If not specifed, no results logging "
+                             "is done.",
+                        metavar="path",
+                        default=None)
 
     # Name of the output file (without extension)
-    output_name = None
     parser.add_argument("-rn",
                         "--results_name",
-                        help="Name of the results log file. If a CSV file was specified, this argument will be ignored.")
+                        help="Name of the results log file. If a CSV file was specified, "
+                             "this argument can be ignored by automatically using the CSV file name.",
+                        metavar="name",
+                        default=None)
 
     # Flush frequency - how often the results log is updated
-    flush_frequency = 300
     parser.add_argument("-rf",
                         "--results_flush",
                         type=int,
                         metavar="[rf > 0]",
-                        help="Update frequency (in seconds) of the results log file.")
+                        help="Update frequency (in seconds) of the results log file.",
+                        default=300)
 
     # Resulting BIF path - Path where the resulting BIF file will be stored in
-    resulting_bif_path = None
-    parser.add_argument("-rb",
-                        "--results_bif",
-                        help="If specified, path where the resulting BIF file (resulting DAG plus estimated CPDs) will "
-                             "be stored. NOTE: The actual file name should NOT be specified.")
+    parser.add_argument("-rbp",
+                        "--results_bif_path",
+                        help="Folder where the resulting BIF file (resulting DAG plus estimated CPDs) will be stored. "
+                             "If not specified, no BIF will be stored.",
+                        metavar="path",
+                        default=None)
 
     # ARGUMENT PARSING AND PRE-PROCESSING #
 
     # Parse the arguments and, if required, use the JSON string instead
+    # The values in the JSON string will be appended on top of the default values - to avoid missing values
+    # for non-specified arguments in the JSON
+
     arguments = vars(parser.parse_args())
-    if arguments["config"]:
-        arguments = json.loads(arguments["config"])
+    if arguments.get("config"):
+        import json
+        arguments |= json.loads(arguments["config"])
 
     # Start parsing, sanitizing and pre-processing all present arguments
 
     # DATASET AND BIF #
+    # Both the dataset path and the BIF paths are processed within the algorithm
 
-    # Dataset arguments (number and size) are parsed before the actual dataset path, in order
-    # to be able to use them if necessary
-    if "dataset_number" in arguments:
-        if arguments["dataset_number"]:
-            csv_number = arguments["dataset_number"]
+    # Dataset - check if its a path or a properly formatted option (with format "name-[1-10]-10000")
+    bnlearn_regex = "|".join(bnlearn_networks)
+    file_regex = re.search(r"(?P<dataset>{})-(?P<id>[1-9]|10)-(?P<size>10000)", arguments["dataset"])
 
-    if "dataset_size" in arguments:
-        if arguments["dataset_size"]:
-            csv_size = arguments["dataset_size"]
+    # If there is a match - load the appropriate path
+    if file_regex:
+        csv_path = dataset_paths[file_regex.group("dataset")].format(file_regex.group("size"),
+                                                                     file_regex.group("size"),
+                                                                     file_regex.group("id"))
+        # Ensure that the CSV file actually exists
+        if not exists(csv_path):
+            raise ValueError(f"{arguments['dataset']} cannot find the CSV in the expected route.")
+    else:
+        # Check that the path actually exists - and if not, raise an exception
+        csv_path = arguments["dataset"]
+        if not exists(csv_path):
+            raise ValueError(f"{csv_path} is either not a valid path or not a properly formatted BNLearn dataset.")
 
-    if "bif" in arguments:
-        if arguments["bif"]:
-            # Directly extract the BIF path from the dictionary if appropriate,
-            if arguments["bif"] in bif_paths:
-                bif_file = bif_paths[arguments["bif"]]
-            else:
-                bif_file = arguments["bif"]
+    # Bif - check if its a BNLearn network or a path
+    if bif_path := bif_paths.get(arguments["bif"]):
+        # If its a path, ensure that the BIF file actually exists
+        if not exists(bif_path):
+            raise ValueError(f"{arguments['bif']} cannot find the BIF in the expected route.")
+    # If its a path, ensure that the path actually exists - and if not, raise an exception
+    else:
+        # Check that the path actually exists - and if not, raise an exception
+        bif_path = arguments["bif"]
+        if not exists(csv_path):
+            raise ValueError(f"{bif_path} is either not a valid path or not a properly formatted BNLearn dataset.")
 
-            # Convert the BIF path into an actual Bayesian Network
-            bif_file = BIFReader(bif_file).get_model()
-
-    if "dataset" in arguments:
-        if arguments["dataset"]:
-            # If a BNLearn dataset is specified, prepare the actual path to the CSV file
-            if arguments["dataset"] in dataset_paths:
-                csv_file = dataset_paths[arguments["dataset"]].format(csv_size, csv_size, csv_number)
-            else:
-                csv_file = arguments["dataset"]
+    # TODO - CONTINUE PARSING FROM HERE
+    # TODO - ENSURE THAT EVERYTHING IS PROPERLY PARSED FROM THE BASE ALGORITHM
 
     # ALGORITHM AND SCORE #
+    if arguments.get("algorithm"):
+        algorithm = arguments["algorithm"]
 
-    if "algorithm" in arguments:
-        if arguments["algorithm"]:
-            algorithm = arguments["algorithm"]
-
-    if "score" in arguments:
-        if arguments["score"]:
-            score_method = arguments["score"]
+    if arguments.get("score"):
+        score_method = arguments["score"]
 
     if "hillclimbing_path" in arguments:
         if arguments["hillclimbing_path"]:
