@@ -242,7 +242,8 @@ if __name__ == "__main__":
 
     # Dataset - check if it's a path or a properly formatted option (with format "name-[1-10]-10000")
     bnlearn_regex = "|".join(bnlearn_networks)
-    file_regex = re.search(r"(?P<dataset>{})-(?P<id>[1-9]|10)-(?P<size>10000)", arguments["dataset"])
+    file_regex = re.search(r"(?P<dataset>{})-(?P<id>[1-9]|10)-(?P<size>10000)".format(bnlearn_regex),
+                           arguments["dataset"])
 
     # If there is a match - load the appropriate path
     if file_regex:
