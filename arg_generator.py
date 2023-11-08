@@ -43,7 +43,7 @@ network_sizes = {"asia": "small",  # SMALL
 # BIF file path, where {} represents:
 #   1- Network size
 #   2- Dataset name
-bif_file_path_windows = "./input/bif/{}/{}.bif"
+bif_file_path = "./input/bif/{}/{}.bif"
 
 # CSV file path, where {} represents:
 #   1 - Network size
@@ -52,19 +52,21 @@ bif_file_path_windows = "./input/bif/{}/{}.bif"
 #   4 - Dataset name
 #   5 - Dataset size
 #   6 - Dataset ID
-csv_file_path_windows = "./input/csv/{}/{}/{}/{}-{}_{}.csv"
+csv_file_path = "./input/csv/{}/{}/{}/{}-{}_{}.csv"
 
 # Results log path, where {} represents:
 #   1 - Dataset name
 #   2 - Dataset size
-#   3 - Performed algorithm
-results_log_path_windows = "./output/{}/{}/{}/results/"
+#   3 - Algorithm used
+#   4 - Scorer used
+results_log_path = "./output/{}/{}/{}/{}/log/"
 
 # Results BIF path, where {} represents:
 #   1 - Dataset name
 #   2 - Dataset size
-#   3 - Performed algorithm
-results_bif_path_windows = "./output/{}/{}/{}/bif/"
+#   3 - Algorithm used
+#   4 - Scorer used
+results_bif_path = "./output/{}/{}/{}/{}/bif/"
 
 # Possible values #
 # Network names
@@ -84,7 +86,7 @@ dataset_sizes = [10000]
 algorithms = ["hillclimbing"]
 
 # Scoring methods
-scoring_methods = ["bdeu"]
+scoring_methods = ["bdeu", "ll", "bic", "aic"]
 
 # FILE CREATION AND JSON CREATION#
 # File is directly created and handled using the "with" Python interface
@@ -94,19 +96,20 @@ with open("experiment_list.txt", "w") as file:
     arguments_lists = [network_names, dataset_ids, dataset_sizes, algorithms, scoring_methods]
     arguments_combinations = list(product(*arguments_lists))
 
-    # Create an appropriate JSOn for each argument combination
+    # Create an appropriate string for each argument combination
     for network_name, dataset_id, dataset_size, algorithm, scoring_method in arguments_combinations:
 
         network_size = network_sizes[network_name]
 
-        experiment_string = "--dataset {} --bif {} --algorithm {} --score {} --results_path {} --results_bif {}\n".format(
-            csv_file_path_windows.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id),
-            bif_file_path_windows.format(network_size, network_name),
+        experiment_string = ("--dataset {} --bif {} --algorithm {} --score {} "
+                             "--results_log_path {} --results_bif_path {}\n").format(
+            csv_file_path.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id),
+            bif_file_path.format(network_size, network_name),
             algorithm,
             scoring_method,
-            results_log_path_windows.format(network_size, network_name, algorithm),
-            results_bif_path_windows.format(network_size, network_name, algorithm)
+            results_log_path.format(network_size, network_name, algorithm, scoring_method),
+            results_bif_path.format(network_size, network_name, algorithm, scoring_method)
         )
 
-        # Write the JSON arguments into the file
+        # Write the string arguments into the file
         file.write(experiment_string)
