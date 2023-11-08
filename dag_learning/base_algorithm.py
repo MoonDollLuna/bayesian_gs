@@ -7,10 +7,11 @@
 import os.path
 
 from numpy import ndarray
+from pgmpy.readwrite.BIF import BIFReader
 from pgmpy.models import BayesianNetwork
 from pandas import DataFrame, read_csv
 
-from dag_scoring import BaseScore, BDeuScore
+from dag_scoring import BaseScore, BDeuScore, LLScore, BICScore, AICScore
 from utils import ResultsLogger
 
 from typing import Optional
@@ -23,7 +24,7 @@ class BaseAlgorithm:
 
     In addition, a basic constructor is provided with most of the data required to be stored. Further
     information more specific to each algorithm (such as metrics or hyperparameters) should be specified
-    either as a `build_dag` argument or as an extension of the constructor.
+    either as a `search` argument or as an extension of the constructor.
 
     Parameters
     ----------
@@ -39,8 +40,8 @@ class BaseAlgorithm:
         List of ordered variable names contained within the data.
         This argument is ignored unless a numpy Array is given as data - in which case, it is mandatory.
     bayesian_network: BayesianNetwork or str, optional
-        Bayesian Network (or path to the BIF file describing it) used for final measurements (like
-        the log likelihood of the dataset)
+        Bayesian Network (or path to the BIF file describing it) of the used dataset,
+        used for final measurements and comparisons (like the log likelihood of the dataset)
     score_method: {"bdeu"}
         Scoring method used to build the Bayesian Network.
         Any required arguments are passed through **score_arguments
@@ -58,6 +59,15 @@ class BaseAlgorithm:
     **score_arguments
         Arguments to provide to the scoring method. Currently, only BDeu is available as a scoring method.
     """
+
+    # DATA #
+    # Class associated to each score type
+    _recognized_scorers = {
+        "bdeu": BDeuScore,
+        "ll": LLScore,
+        "bic": BICScore,
+        "aic": AICScore
+    }
 
     # ATTRIBUTES #
 
@@ -116,7 +126,7 @@ class BaseAlgorithm:
             # Numpy
             # Nodes MUST be given as an argument
             if nodes is None:
-                raise ValueError("A list of variable names must be given if a numpy array is passed as argument.")
+                raise ValueError("A list of variable names must be given if a numpy array is passed as an argument.")
 
             # Create a Pandas dataframe from the given information
             self.data = DataFrame(data=data, columns=nodes)
@@ -127,21 +137,29 @@ class BaseAlgorithm:
 
         # Check if an output name has been given, if required
         if results_log_path and not results_file_name:
-            raise AttributeError("An output file name must be specified if results logging is used.")
+            raise AttributeError("An output file name must be specified if results logging is used without specifying"
+                                 "a path for the data.")
 
-        # If a bayesian network is specified, store it for structure checks
-        self.bayesian_network = bayesian_network
+        # If a bayesian network is specified, parse it and store it for structure checks
+        if isinstance(bayesian_network, str):
+            self.bayesian_network = BIFReader(bayesian_network).get_model()
+        else:
+            self.bayesian_network = bayesian_network
 
         # Initialize the scorer class
-        if score_method == "bdeu":
-            self.score_type = "bdeu"
-            equivalent_sample_size = score_arguments["bdeu_equivalent_sample_size"] if \
-                ("bdeu_equivalent_sample_size" in score_arguments) else 10
+        if score_method in self._recognized_scorers:
+            self.score_type = score_method
 
-            self.local_scorer = BDeuScore(self.data, equivalent_sample_size=equivalent_sample_size)
+            # BDeu requires an additional argument
+            if score_method == "bdeu":
+                equivalent_sample_size = score_arguments["bdeu_equivalent_sample_size"] if \
+                    ("bdeu_equivalent_sample_size" in score_arguments) else 10
+                self.local_scorer = self._recognized_scorers[score_method](self.data,
+                                                                           equivalent_sample_size=equivalent_sample_size)
+            else:
+                self.local_scorer = self._recognized_scorers[score_method](self.data)
         else:
-            # Currently, only BDeu is implemented
-            raise NotImplementedError("Only BDeu scoring is currently available")
+            raise TypeError("A valid scoring method must be specified")
 
         # Create the Results Logger. If no path is specified, only console logging will be considered
         self.results_logger = ResultsLogger(results_log_path, results_file_name, results_flush_freq)

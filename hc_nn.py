@@ -8,11 +8,6 @@ import argparse
 import re
 from os.path import exists
 
-# TODO - Hide imports behind entry point based on chosen options to speed up
-from pgmpy.readwrite.BIF import BIFReader
-from dag_learning import HillClimbing
-from dag_architectures import ExtendedDAG
-
 # DICTIONARIES #
 
 # These dictionaries are used for simpler and faster lookup of all BNLearn bayesian networks
@@ -298,6 +293,7 @@ if __name__ == "__main__":
     # Only parse the relevant arguments for the algorithm
 
     if algorithm == "hillclimbing":
+        from dag_learning import HillClimbing
 
         starting_dag_path = arguments["starting_dag_path"]
 
@@ -334,4 +330,4 @@ if __name__ == "__main__":
 
     else:
         # TODO ADD MORE ALGORITHMS
-        pass
+        raise NotImplementedError("Only HillClimbing is currently implemented")
