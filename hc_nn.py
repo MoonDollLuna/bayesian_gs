@@ -141,7 +141,7 @@ if __name__ == "__main__":
                         help="Scoring method used to measure the quality of the DAG during the algorithm.",
                         default="bdeu")
 
-    # SCORE ARGUMENTS #
+    # SCORE-SPECIFIC ARGUMENTS #
 
     # BDEU SPECIFIC ARGUMENTS
     # BDeu equivalent sample size
@@ -160,35 +160,35 @@ if __name__ == "__main__":
                         help="Level of verbosity of the algorithm. 0 refers to a silent algorithm",
                         default=6)
 
-    # HILL CLIMBING ARGUMENTS #
+    # ALGORITHM ARGUMENTS
 
     # Path to the starting DAG
-    parser.add_argument("-hcd",
-                        "--hillclimbing_dag",
+    parser.add_argument("-sdag",
+                        "--starting_dag_path",
                         metavar="path",
-                        help="Path to the starting DAG for Hill Climbing. If not specified, an empty DAG "
+                        help="Path to the starting DAG for the algorithm. If not specified, an empty DAG "
                              "will be used instead.",
                         default=None)
 
     # Epsilon - minimum change in score required to accept the action
-    parser.add_argument("-hce",
-                        "--hillclimbing_epsilon",
+    parser.add_argument("-eps",
+                        "--epsilon",
                         type=float,
                         metavar="[hce >= 0.0]",
                         help="Minimum change in score required to accept an action during Hill Climbing.",
                         default=0.0001)
 
     # Maximum number of iterations
-    parser.add_argument("-hci",
-                        "--hillclimbing_iterations",
+    parser.add_argument("-iter",
+                        "--algorithm_iterations",
                         type=int,
                         metavar="[hci > 0]",
                         help="Maximum number of iterations performed during Hill Climbing.",
                         default=1e6)
 
     # Size of the sample used for the log likelihood
-    parser.add_argument("-hcl",
-                        "--hillclimbing-loglikelihood",
+    parser.add_argument("-logs",
+                        "--loglikelihood_sample_size",
                         type=int,
                         metavar="[hcl > 0]",
                         help="ONLY USED IF A BIF FILE IS SPECIFIED. "
@@ -205,22 +205,6 @@ if __name__ == "__main__":
                         metavar="path",
                         default=None)
 
-    # Name of the output file (without extension)
-    parser.add_argument("-rn",
-                        "--results_name",
-                        help="Name of the results log file. If a CSV file was specified, "
-                             "this argument can be ignored by automatically using the CSV file name.",
-                        metavar="name",
-                        default=None)
-
-    # Flush frequency - how often the results log is updated
-    parser.add_argument("-rf",
-                        "--results_flush",
-                        type=int,
-                        metavar="[rf > 0]",
-                        help="Update frequency (in seconds) of the results log file.",
-                        default=300)
-
     # Resulting BIF path - Path where the resulting BIF file will be stored in
     parser.add_argument("-rbp",
                         "--results_bif_path",
@@ -229,7 +213,23 @@ if __name__ == "__main__":
                         metavar="path",
                         default=None)
 
-    # ARGUMENT PARSING AND PRE-PROCESSING #
+    # Name of the output file (without extension)
+    parser.add_argument("-rn",
+                        "--results_file_name",
+                        help="Name of the results log file. If a CSV file was specified, "
+                             "this argument can be ignored by automatically using the CSV file name.",
+                        metavar="name",
+                        default=None)
+
+    # Flush frequency - how often the results log is updated
+    parser.add_argument("-rf",
+                        "--results_flush_frequency",
+                        type=int,
+                        metavar="[rf > 0]",
+                        help="Update frequency (in seconds) of the results log file.",
+                        default=300)
+
+    # ARGUMENT PARSING, PRE-PROCESSING AND EXECUTION #
 
     # Parse the arguments and, if required, use the JSON string instead
     # The values in the JSON string will be appended on top of the default values - to avoid missing values
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     # DATASET AND BIF #
     # Both the dataset path and the BIF paths are processed within the algorithm
 
-    # Dataset - check if its a path or a properly formatted option (with format "name-[1-10]-10000")
+    # Dataset - check if it's a path or a properly formatted option (with format "name-[1-10]-10000")
     bnlearn_regex = "|".join(bnlearn_networks)
     file_regex = re.search(r"(?P<dataset>{})-(?P<id>[1-9]|10)-(?P<size>10000)", arguments["dataset"])
 
@@ -263,102 +263,74 @@ if __name__ == "__main__":
         if not exists(csv_path):
             raise ValueError(f"{csv_path} is either not a valid path or not a properly formatted BNLearn dataset.")
 
-    # Bif - check if its a BNLearn network or a path
+    # Bif - check if it's a BNLearn network or a path
     if bif_path := bif_paths.get(arguments["bif"]):
-        # If its a path, ensure that the BIF file actually exists
+        # If it's a path, ensure that the BIF file actually exists
         if not exists(bif_path):
             raise ValueError(f"{arguments['bif']} cannot find the BIF in the expected route.")
-    # If its a path, ensure that the path actually exists - and if not, raise an exception
+    # If it's a path, ensure that the path actually exists - and if not, raise an exception
     else:
         # Check that the path actually exists - and if not, raise an exception
         bif_path = arguments["bif"]
         if not exists(csv_path):
             raise ValueError(f"{bif_path} is either not a valid path or not a properly formatted BNLearn dataset.")
 
-    # TODO - CONTINUE PARSING FROM HERE
-    # TODO - ENSURE THAT EVERYTHING IS PROPERLY PARSED FROM THE BASE ALGORITHM
+    # ALGORITHM AND SCORE ARGUMENTS
+    algorithm = arguments["algorithm"]
+    score_method = arguments["score"]
 
-    # ALGORITHM AND SCORE #
-    if arguments.get("algorithm"):
-        algorithm = arguments["algorithm"]
+    # BDeu specific arguments
+    if score_method == "bdeu":
+        bdeu_esz = arguments["bdeu_sample_size"]
 
-    if arguments.get("score"):
-        score_method = arguments["score"]
+    # VERBOSITY AND RESULTS LOGGING ARGUMENTS
+    verbosity = arguments["verbosity"]
 
-    if "hillclimbing_path" in arguments:
-        if arguments["hillclimbing_path"]:
-            # Path is converted into a DAG directly
-            # TODO - Convert Extended DAG depending on type of algorithm
-            starting_dag = ExtendedDAG.from_bayesian_network(BIFReader(arguments["hillclimbing_path"]).get_model())
+    results_log_path = arguments["results_log_path"]
+    results_bif_path = arguments["results_bif_path"]
+    results_file_name = arguments["results_file_name"]
+    # Flush frequency must be a positive integer
+    results_flush_frequency = arguments["results_flush_frequency"]
+    if results_flush_frequency <= 0:
+        raise ValueError("Results flush frequency must be a positive number.")
 
-    if "hillclimbing_epsilon" in arguments:
-        if arguments["hillclimbing_epsilon"]:
-            if arguments["hillclimbing_epsilon"] < 0.0:
-                raise ValueError("HillClimbing Epsilon must be a positive number.")
-            else:
-                epsilon = arguments["hillclimbing_epsilon"]
-
-    if "hillclimbing_iterations" in arguments:
-        if arguments["hillclimbing_iterations"]:
-            if arguments["hillclimbing_iterations"] <= 0:
-                raise ValueError("HillClimbing Iterations must be a positive number.")
-            else:
-                max_iterations = arguments["hillclimbing_iterations"]
-
-    if "hillclimbing_loglikelihood" in arguments:
-        if arguments["hillclimbing_loglikelihood"]:
-            if arguments["hillclimbing_loglikelihood"] <= 0:
-                raise ValueError("HillClimbing log likelihood must be a positive number.")
-            else:
-                log_likelihood_size = arguments["hillclimbing_loglikelihood"]
-
-    if "hillclimbing_verbosity" in arguments:
-        if arguments["hillclimbing_verbosity"]:
-            verbose = arguments["hillclimbing_verbosity"]
-
-    # BDEU SCORE #
-
-    if "bdeu_sample_size" in arguments:
-        if arguments["bdeu_sample_size"]:
-            if arguments["bdeu_sample_size"] <= 0:
-                raise ValueError("BDeu equivalent sample size must be a positive number.")
-            else:
-                bdeu_equivalent_sample_size = arguments["bdeu_sample_size"]
-
-    # RESULTS LOGGING #
-
-    if "results_path" in arguments:
-        if arguments["results_path"]:
-            results_path = arguments["results_path"]
-
-    if "results_name" in arguments:
-        if arguments["results_name"]:
-            output_name = arguments["results_name"]
-
-    if "results_flush" in arguments:
-        if arguments["results_flush"]:
-            if arguments["results_flush"] <= 0:
-                raise ValueError("Flush frequency must be a positive number.")
-            else:
-                flush_frequency = arguments["results_flush"]
-
-    if "results_bif" in arguments:
-        if arguments["results_bif"]:
-            resulting_bif_path = arguments["results_bif"]
-
-    # PARAMETER PRE-PROCESSING AND ALGORITHM EXECUTION
+    # ALGORITHM SPECIFIC ARGUMENT PARSING AND EXECUTION #
+    # Only parse the relevant arguments for the algorithm
 
     if algorithm == "hillclimbing":
 
-        # Create the Hill Climbing instance
-        hill_climbing = HillClimbing(csv_file, nodes=None, bayesian_network=bif_file, score_method=score_method,
-                                     results_path=results_path, output_file_name=output_name,
-                                     flush_frequency=flush_frequency, resulting_bif_path=resulting_bif_path,
-                                     bdeu_equivalent_sample_size=bdeu_equivalent_sample_size)
+        starting_dag_path = arguments["starting_dag_path"]
+
+        # All numeric values must be positive (or not negative for epsilon)
+        epsilon = arguments["epsilon"]
+        if epsilon < 0:
+            raise ValueError("Epsilon cannot be a negative number.")
+
+        iterations = arguments["algorithm_iterations"]
+        if iterations <= 0:
+            raise ValueError("The number of iterations must be a positive number.")
+
+        loglikelihood_sample_size = arguments["loglikelihood_sample_size"]
+        if loglikelihood_sample_size <= 0:
+            raise ValueError("The number of iterations must be a positive number.")
+
+        # Create the Hill Climbing instance and launch the experiment
+        if score_method == "bdeu":
+            hill_climbing = HillClimbing(csv_path, nodes=None, bayesian_network=bif_path, score_method=score_method,
+                                         results_log_path=results_log_path, results_bif_path=results_bif_path,
+                                         results_file_name=results_file_name,
+                                         results_flush_freq=results_flush_frequency,
+                                         bdeu_equivalent_sample_size=bdeu_esz)
+        else:
+            hill_climbing = HillClimbing(csv_path, nodes=None, bayesian_network=bif_path, score_method=score_method,
+                                         results_log_path=results_log_path, results_bif_path=results_bif_path,
+                                         results_file_name=results_file_name,
+                                         results_flush_freq=results_flush_frequency)
 
         # Perform Hill Climbing
-        resulting_dag = hill_climbing.search(starting_dag=starting_dag, epsilon=epsilon, max_iterations=max_iterations,
-                                             log_likelihood_size=log_likelihood_size, verbose=verbose)
+        resulting_dag = hill_climbing.search(starting_dag=starting_dag_path, epsilon=epsilon,
+                                             max_iterations=iterations, log_likelihood_size=loglikelihood_sample_size,
+                                             verbose=verbosity)
 
     else:
         # TODO ADD MORE ALGORITHMS

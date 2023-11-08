@@ -44,16 +44,16 @@ class BaseAlgorithm:
     score_method: {"bdeu"}
         Scoring method used to build the Bayesian Network.
         Any required arguments are passed through **score_arguments
-    results_path: str, optional
+    results_log_path: str, optional
         Path (without file name) to store the results logger file. If not specified, no logging will be done.
-    resulting_bif_path: str, optional
+    results_bif_path: str, optional
         Path (without file name) to store the resulting DAG (as a bayesian network with estimated CPDs).
         If not specified, the resulting DAG will not be stored.
-    output_file_name: str, optional
+    results_file_name: str, optional
         Filename of the output data (both results log and resulting DAG).
         Only used if data is not specified as a CSV and if results_path or resulting_dag_path is not None.
         By default, uses the name of the CSV file (without the .CSV extension)
-    flush_frequency: int, default=300
+    results_flush_freq: int, default=300
         Time (in seconds) between results logger flushes / how often the file is written to.
     **score_arguments
         Arguments to provide to the scoring method. Currently, only BDeu is available as a scoring method.
@@ -91,8 +91,8 @@ class BaseAlgorithm:
     # CONSTRUCTOR #
 
     def __init__(self, data, nodes=None, bayesian_network=None, score_method="bdeu",
-                 results_path=None, output_file_name=None, flush_frequency=300,
-                 resulting_bif_path=None, **score_arguments):
+                 results_log_path=None, results_bif_path=None, results_file_name=None, results_flush_freq=300,
+                 **score_arguments):
 
         # TODO - INPUT DATA AND BN CAN EITHER BE A PATH OR A PANDAS / NUMPY / PGMPY BN
 
@@ -102,7 +102,7 @@ class BaseAlgorithm:
             # Path to a CSV file or Pandas DataFrame
             # If a path to a CSV file is given, read the data from it and extract the input file name
             if isinstance(data, str):
-                output_file_name = os.path.splitext(os.path.basename(data))[0]
+                results_file_name = os.path.splitext(os.path.basename(data))[0]
 
                 # Data is always read as string, to avoid data type sniffing
                 # In addition, no values are interpreted as NaN to avoid converting Nones into NaNs
@@ -126,7 +126,7 @@ class BaseAlgorithm:
             raise TypeError("Data must be provided as a CSV file, a Pandas dataframe or a Numpy array.")
 
         # Check if an output name has been given, if required
-        if results_path and not output_file_name:
+        if results_log_path and not results_file_name:
             raise AttributeError("An output file name must be specified if results logging is used.")
 
         # If a bayesian network is specified, store it for structure checks
@@ -144,8 +144,8 @@ class BaseAlgorithm:
             raise NotImplementedError("Only BDeu scoring is currently available")
 
         # Create the Results Logger. If no path is specified, only console logging will be considered
-        self.results_logger = ResultsLogger(results_path, output_file_name, flush_frequency)
+        self.results_logger = ResultsLogger(results_log_path, results_file_name, results_flush_freq)
 
         # If specified, store both DAG path and name
-        self.dag_path = resulting_bif_path
-        self.dag_name = output_file_name
+        self.dag_path = results_bif_path
+        self.dag_name = results_file_name
