@@ -10,7 +10,7 @@ import time
 
 from dag_architectures import ExtendedDAG
 
-from typing import IO, Any
+from typing import IO, Any, Optional
 
 
 class ResultsLogger:
@@ -43,8 +43,8 @@ class ResultsLogger:
     # FILE HANDLING
 
     # Handle of the internal file and CSV writer
-    _file: IO
-    _csv_writer: Any
+    _file: Optional[IO]
+    _csv_writer: Optional[Any]
 
     # File name and file path
     file_name: str
@@ -80,6 +80,10 @@ class ResultsLogger:
 
             # Create the file and store the handles
             self._create_results_file(self.file_path)
+        # Otherwise, create empty handles
+        else:
+            self._file = None
+            self._csv_writer = None
 
     # FILE AND PATH MANAGEMENT
     def _create_results_file(self, file_path):
@@ -224,9 +228,9 @@ class ResultsLogger:
 
                     # A different string is prepared depending on whether a tab is needed or not
                     if not data_tab:
-                        print(f"# - {data_name}: {data_value} {data_unit}\n", end="")
+                        print(f"- {data_name}: {data_value} {data_unit}\n", end="")
                     else:
-                        print(f"#\t * {data_name}: {data_value} {data_unit}\n", end="")
+                        print(f"\t * {data_name}: {data_value} {data_unit}\n", end="")
 
             # If necessary, print a new line
             if (index == 0 and key_logging) or (index == 1 and extra_logging):
@@ -268,7 +272,8 @@ class ResultsLogger:
 
         # Block start and block title
         self.write_line("########################################\n")
-        self.write_line(f"# {block_title}\n\n", printed=logging)
+        self.write_line(f"# {block_title}\n", printed=logging)
+        self.write_line("#\n", printed=logging)
 
         # Dictionary values
         for data_name, (data_value, data_unit, data_tab) in data_dictionary.items():
@@ -279,13 +284,14 @@ class ResultsLogger:
 
             # A different string is prepared depending on whether a tab is needed or not
             if not data_tab:
-                self.write_line(f"- {data_name}: {data_value} {data_unit}\n",
+                self.write_line(f"# - {data_name}: {data_value} {data_unit}\n",
                                 printed=logging)
             else:
-                self.write_line(f"\t * {data_name}: {data_value} {data_unit}\n",
+                self.write_line(f"#\t * {data_name}: {data_value} {data_unit}\n",
                                 printed=logging)
 
         # Block end
+        self.write_line("#")
         self.write_line("\n########################################\n")
         self.write_line("\n", printed=logging)
 
@@ -311,7 +317,8 @@ class ResultsLogger:
 
         # Block start and block title
         self.write_line("########################################\n")
-        self.write_line("# FINAL DAG\n\n", printed=logging)
+        self.write_line("# FINAL DAG\n", printed=logging)
+        self.write_line("#\n", printed=logging)
 
         # Convert the DAG to a set of strings and write them
         dag_strings = str(dag).split("; ")
@@ -319,5 +326,6 @@ class ResultsLogger:
             self.write_line(f"# {dag_string}\n", printed=logging)
 
         # Block end
+        self.write_line("#")
         self.write_line("\n########################################\n")
         self.write_line("\n", printed=logging)
