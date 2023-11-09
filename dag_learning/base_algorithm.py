@@ -11,7 +11,7 @@ from pgmpy.readwrite.BIF import BIFReader
 from pgmpy.models import BayesianNetwork
 from pandas import DataFrame, read_csv
 
-from dag_scoring import BaseScore, BDeuScore, LLScore, BICScore, AICScore
+from dag_scoring import BaseScore, K2Score, BDeuScore, LLScore, BICScore, AICScore
 from utils import ResultsLogger
 
 from typing import Optional
@@ -63,6 +63,7 @@ class BaseAlgorithm:
     # DATA #
     # Class associated to each score type
     _recognized_scorers = {
+        "k2": K2Score,
         "bdeu": BDeuScore,
         "ll": LLScore,
         "bic": BICScore,
@@ -103,8 +104,6 @@ class BaseAlgorithm:
     def __init__(self, data, nodes=None, bayesian_network=None, score_method="bdeu",
                  results_log_path=None, results_bif_path=None, results_file_name=None, results_flush_freq=300,
                  **score_arguments):
-
-        # TODO - INPUT DATA AND BN CAN EITHER BE A PATH OR A PANDAS / NUMPY / PGMPY BN
 
         # Process the input data
         if isinstance(data, (str, DataFrame)):

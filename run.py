@@ -132,7 +132,7 @@ if __name__ == "__main__":
     # Scoring method used within the algorithm
     parser.add_argument("-s",
                         "--score",
-                        choices=["bdeu", "bic", "aic", "ll"],
+                        choices=["k2", "bdeu", "bic", "aic", "ll"],
                         help="Scoring method used to measure the quality of the DAG during the algorithm.",
                         default="bdeu")
 

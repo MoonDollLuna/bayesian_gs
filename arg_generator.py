@@ -86,7 +86,7 @@ dataset_sizes = [10000]
 algorithms = ["hillclimbing"]
 
 # Scoring methods
-scoring_methods = ["bdeu", "ll", "bic", "aic"]
+scoring_methods = ["k2", "bdeu", "ll", "bic", "aic"]
 
 # FILE CREATION AND JSON CREATION#
 # File is directly created and handled using the "with" Python interface

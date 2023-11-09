@@ -133,7 +133,6 @@ output*/
 *.xml
 .idea/*
 
-.idea/*
-
-execute.sh
+# Launch details
+queue_experiments.sh
 *.xlsx

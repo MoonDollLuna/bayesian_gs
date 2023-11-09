@@ -3,17 +3,14 @@
 # Based on the work of Wenfeng Zhang et al.
 
 """
-This class contains all Information Criterion related local scoring methods for Bayesian Network Structure scoring.
+This file contains all Information Criterion related local scoring methods for Bayesian Network Structure scoring.
 
-More specifically, this class contains:
+More specifically, this file contains:
 
     * Log Likelihood (LL) score
     * Bayesian Information Criterion (BIC) score / Minimum Description Length (MDL) score
-    * Bayesian Information Criterion (BIC) score / Minimum Description Length (MDL) score
     * Akaike Information Criterion (AIC) score
 """
-
-# TODO - ALLOW OTHERS TO USE THE FOLLOWING CLASSES
 
 # IMPORTS #
 import math
@@ -51,28 +48,13 @@ class LLScore(BaseScore):
         each row represents an instance of the dataset, with each column representing a variable (following
         the order of nodes)
     """
-    # ATTRIBUTES #
-
-    # CONSTRUCTOR AND INITIALIZATION METHODS #
-    def __init__(self, data, equivalent_sample_size=10):
-
-        # Parent constructor call
-        super().__init__(data)
-
-        # Store the equivalent sample size
-        self.esz = equivalent_sample_size
 
     # SCORE FUNCTIONS #
 
     @lru_cache(maxsize=None)
     def local_score(self, node, parents):
         """
-        Computes the local BIC score for a variable given a list of parents.
-
-        This code is based on pgmpy's BDeu Scorer implementation, but modified to:
-
-        - Speed up the calculation by using a numpy array instead of a Pandas dataframe.
-        - Include the prior probability of the variable having said parents.
+        Computes the local LL score for a variable given a list of parents.
 
         This function is cached, meaning that repeated calls with the same arguments will only be run once.
 
@@ -155,16 +137,6 @@ class BICScore(BaseScore):
         each row represents an instance of the dataset, with each column representing a variable (following
         the order of nodes)
     """
-    # ATTRIBUTES #
-
-    # CONSTRUCTOR AND INITIALIZATION METHODS #
-    def __init__(self, data, equivalent_sample_size=10):
-
-        # Parent constructor call
-        super().__init__(data)
-
-        # Store the equivalent sample size
-        self.esz = equivalent_sample_size
 
     # SCORE FUNCTIONS #
 
@@ -173,7 +145,7 @@ class BICScore(BaseScore):
         """
         Computes the local BIC score for a variable given a list of parents.
 
-        This code is based on pgmpy's BDeu Scorer implementation, but modified to:
+        This code is based on pgmpy's BIC Scorer implementation, but modified to:
 
         - Speed up the calculation by using a numpy array instead of a Pandas dataframe.
         - Include the prior probability of the variable having said parents.
@@ -264,28 +236,13 @@ class AICScore(BaseScore):
         each row represents an instance of the dataset, with each column representing a variable (following
         the order of nodes)
     """
-    # ATTRIBUTES #
-
-    # CONSTRUCTOR AND INITIALIZATION METHODS #
-    def __init__(self, data, equivalent_sample_size=10):
-
-        # Parent constructor call
-        super().__init__(data)
-
-        # Store the equivalent sample size
-        self.esz = equivalent_sample_size
 
     # SCORE FUNCTIONS #
 
     @lru_cache(maxsize=None)
     def local_score(self, node, parents):
         """
-        Computes the local BIC score for a variable given a list of parents.
-
-        This code is based on pgmpy's BDeu Scorer implementation, but modified to:
-
-        - Speed up the calculation by using a numpy array instead of a Pandas dataframe.
-        - Include the prior probability of the variable having said parents.
+        Computes the local AIC score for a variable given a list of parents.
 
         This function is cached, meaning that repeated calls with the same arguments will only be run once.
 
