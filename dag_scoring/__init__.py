@@ -11,7 +11,7 @@ from .statistics_utils import average_markov_blanket, structural_moral_hamming_d
 
 # Serialized scorers
 from .serialized.base_score import BaseScore
-from .serialized.bayesian_dirichlet_scores import K2Score, BDeuScore
+from .serialized.bayesian_dirichlet_scores import BDeuScore
 from .serialized.information_criterion_scores import LLScore, BICScore, AICScore
 
 # Parallelized scorers
