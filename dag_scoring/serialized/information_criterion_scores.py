@@ -61,7 +61,7 @@ class LLScore(BaseScore):
         Parameters
         ----------
         node: str
-            Child variable of which the BDeu score is being computed
+            Child variable of which the LL score is being computed
         parents: tuple[str]
             List of parent variables that influence the child variable. If the variables
             have no parents, an empty list must be passed instead.
@@ -69,25 +69,12 @@ class LLScore(BaseScore):
         Returns
         -------
         float
-            Local BDeu score
+            Local LL score
         """
 
         # PRE - PROCESSING #
-
-        # Get the variable states and number of possible values
-        variable_states = self.node_values[node]
-        variable_length = len(variable_states)
-
-        # Generate a list with all possible parent values (per variable)
-        # (if no parents are specified, the parent length is assumed to be 1)
-        parent_states = [self.node_values[parent] for parent in parents]
-        parent_length = math.prod([len(parent) for parent in parent_states])
-
-        # Generate all possible combinations of parent states
-        parent_state_combinations = list(product(*parent_states))
-
-        # Get the count of each variable state for each combination of parents
-        state_counts = self._get_state_counts(node, variable_states, parents, parent_state_combinations)
+        (variable_states, variable_length, parent_states,
+         parent_length, parent_state_combinations, state_counts) = self._preprocess_node_parents(node, parents)
 
         # BIC CALCULATION #
 
@@ -155,7 +142,7 @@ class BICScore(BaseScore):
         Parameters
         ----------
         node: str
-            Child variable of which the BDeu score is being computed
+            Child variable of which the BIC score is being computed
         parents: tuple[str]
             List of parent variables that influence the child variable. If the variables
             have no parents, an empty list must be passed instead.
@@ -163,25 +150,12 @@ class BICScore(BaseScore):
         Returns
         -------
         float
-            Local BDeu score
+            Local BIC score
         """
 
         # PRE - PROCESSING #
-
-        # Get the variable states and number of possible values
-        variable_states = self.node_values[node]
-        variable_length = len(variable_states)
-
-        # Generate a list with all possible parent values (per variable)
-        # (if no parents are specified, the parent length is assumed to be 1)
-        parent_states = [self.node_values[parent] for parent in parents]
-        parent_length = math.prod([len(parent) for parent in parent_states])
-
-        # Generate all possible combinations of parent states
-        parent_state_combinations = list(product(*parent_states))
-
-        # Get the count of each variable state for each combination of parents
-        state_counts = self._get_state_counts(node, variable_states, parents, parent_state_combinations)
+        (variable_states, variable_length, parent_states,
+         parent_length, parent_state_combinations, state_counts) = self._preprocess_node_parents(node, parents)
 
         # BIC CALCULATION #
 
@@ -257,25 +231,12 @@ class AICScore(BaseScore):
         Returns
         -------
         float
-            Local BDeu score
+            Local BIC score
         """
 
         # PRE - PROCESSING #
-
-        # Get the variable states and number of possible values
-        variable_states = self.node_values[node]
-        variable_length = len(variable_states)
-
-        # Generate a list with all possible parent values (per variable)
-        # (if no parents are specified, the parent length is assumed to be 1)
-        parent_states = [self.node_values[parent] for parent in parents]
-        parent_length = math.prod([len(parent) for parent in parent_states])
-
-        # Generate all possible combinations of parent states
-        parent_state_combinations = list(product(*parent_states))
-
-        # Get the count of each variable state for each combination of parents
-        state_counts = self._get_state_counts(node, variable_states, parents, parent_state_combinations)
+        (variable_states, variable_length, parent_states,
+         parent_length, parent_state_combinations, state_counts) = self._preprocess_node_parents(node, parents)
 
         # BIC CALCULATION #
 

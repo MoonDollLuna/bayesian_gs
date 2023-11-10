@@ -4,6 +4,8 @@
 
 # IMPORTS
 from functools import lru_cache
+from itertools import product
+import math
 
 import numpy as np
 import pandas as pd
@@ -107,6 +109,45 @@ class BaseScore:
         return score
 
     # UTILITY METHODS #
+
+    def _preprocess_node_parents(self, node, parents):
+        """
+        Given a node and a list of its parents, preprocess them to obtain:
+
+            * Node possible states and length
+            * Parents possible states (for each parent) and length (of all combinations of parents)
+            * All possible combinations of parent states
+            * Counts for all combinations of node - parent states
+
+        Parameters
+        ----------
+        node: str
+            Child variable of which the BDeu score is being computed
+        parents: tuple[str]
+            List of parent variables that influence the child variable. If the variables
+            have no parents, an empty list must be passed instead.
+
+        Returns
+        -------
+        list[str], int, list[list[str]], int, list[list[str]]
+        """
+
+        # Get the variable states and number of possible values
+        variable_states = self.node_values[node]
+        variable_length = len(variable_states)
+
+        # Generate a list with all possible parent values (per variable)
+        # (if no parents are specified, the parent length is assumed to be 1)
+        parent_states = [self.node_values[parent] for parent in parents]
+        parent_length = math.prod([len(parent) for parent in parent_states])
+
+        # Generate all possible combinations of parent states
+        parent_state_combinations = list(product(*parent_states))
+
+        # Get the count of each variable state for each combination of parents
+        state_counts = self._get_state_counts(node, variable_states, parents, parent_state_combinations)
+
+        return variable_states, variable_length, parent_states, parent_length, parent_state_combinations, state_counts
 
     def _get_state_counts(self, variable, variable_states, parents, parent_state_combinations):
         """
