@@ -14,7 +14,6 @@ More specifically, this file contains:
 
 # IMPORTS #
 import math
-from itertools import product
 from functools import lru_cache
 
 from pandas import DataFrame
@@ -231,7 +230,7 @@ class AICScore(BaseScore):
         Returns
         -------
         float
-            Local BIC score
+            Local AIC score
         """
 
         # PRE - PROCESSING #

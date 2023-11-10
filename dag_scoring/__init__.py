@@ -3,7 +3,7 @@
 # Based on the work of Wenfeng Zhang et al.
 
 """
-This module contains all classes related to BDeu score computations and storing.
+This module contains all classes related to local score computations and storing.
 """
 
 # Statistics
@@ -15,3 +15,6 @@ from .serialized.bayesian_dirichlet_scores import BDeuScore
 from .serialized.information_criterion_scores import LLScore, BICScore, AICScore
 
 # Parallelized scorers
+from .parallelized.parallel_base_score import ParallelBaseScore
+from .parallelized.parallel_bayesian_dirichlet_scores import ParallelBDeuScore
+from .parallelized.parallel_information_criterion_scores import ParallelLLScore, ParallelBICScore, ParallelAICScore

@@ -3,7 +3,6 @@
 # Based on the work of Wenfeng Zhang et al.
 
 # IMPORTS
-from functools import lru_cache
 from itertools import product
 import math
 
@@ -49,7 +48,6 @@ class BaseScore:
 
     # SCORING METHODS #
 
-    @lru_cache(maxsize=None)
     def local_score(self, node, parents):
         """
         Given a variable and a set of parents, return the local score for said combination.
@@ -129,7 +127,7 @@ class BaseScore:
 
         Returns
         -------
-        list[str], int, list[list[str]], int, list[list[str]]
+        tuple[list[str], int, list[list[str]], int, list[list[str]]]
         """
 
         # Get the variable states and number of possible values

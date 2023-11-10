@@ -23,8 +23,8 @@ def _convert_to_key(node, parents):
 
 class ParallelScoreCache:
     """
-    Local score cache implementation designed for efficient parallelized in-memory usage versus in-file memoizing
-    (such as joblib's implementation).
+    Local score cache implementation designed for efficient parallelized in-memory usage versus in-file
+    memoizing (such as joblib's implementation).
 
     The class works by storing the expected local score for a pair of node and node parents.
 
@@ -74,11 +74,7 @@ class ParallelScoreCache:
         float | None
         """
 
-        # Exceptions are used for speedup
-        try:
-            return self._score_dict[_convert_to_key(node, parents)]
-        except KeyError:
-            return None
+        return self._score_dict.get(_convert_to_key(node, parents))
 
     # ADDITION METHODS
     def add_score(self, node, parents, score):
@@ -100,7 +96,7 @@ class ParallelScoreCache:
 
     def add_dictionary(self, dictionary):
         """
-        Adds a dictionary of values
+        Adds a dictionary of pre-existing values
 
         Parameters
         ----------
@@ -113,7 +109,7 @@ class ParallelScoreCache:
 
     def aggregate_dictionaries(self, *dictionaries):
         """
-        Aggregates an indeterminate number of dictionaries of values
+        Aggregates an indeterminate number of pre-existing dictionaries of values
 
         Parameters
         ----------
@@ -128,7 +124,7 @@ class ParallelScoreCache:
     # DELTA MANAGEMENT METHODS
     def clear_delta(self):
         """
-        Empties the current delta values.
+        Empties the current delta values
         """
 
         self._delta_dict = {}
