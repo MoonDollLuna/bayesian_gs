@@ -3,7 +3,7 @@
 #PBS -l select=1:ncpus=1:mem=7gb:cluster=galgo2
 
 # Launch script:
-# qsub -J 1-240 -v CWD=$PWD queue_experiments.sh
+# qsub -J 1-960 -v CWD=$PWD queue_experiments.sh
 
 # Make sure that the script is run
 # in the current working directory

@@ -12,6 +12,7 @@ from pgmpy.models import BayesianNetwork
 from pandas import DataFrame, read_csv
 
 from dag_scoring import BaseScore, BDeuScore, LLScore, BICScore, AICScore
+from dag_scoring import ParallelBaseScore, ParallelBDeuScore, ParallelLLScore, ParallelBICScore, ParallelAICScore
 from utils import ResultsLogger
 
 from typing import Optional
@@ -86,7 +87,6 @@ class BaseAlgorithm:
 
     # Score method used
     score_type: str
-    # TODO - MAKE THIS EITHER BASESCORE OR BASEPARALLELSCORE
     # Local scorer
     local_scorer: BaseScore
     # Log manager

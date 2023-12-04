@@ -79,7 +79,7 @@ class ParallelScoreCache:
     # ADDITION METHODS
     def add_score(self, node, parents, score):
         """
-        Adds (or updates) a single local score
+        Adds (or updates) a single local score to both the local and delta cache
 
         Parameters
         ----------
@@ -105,7 +105,6 @@ class ParallelScoreCache:
         """
 
         self._score_dict |= dictionary
-        self._delta_dict |= dictionary
 
     def aggregate_dictionaries(self, *dictionaries):
         """
@@ -119,9 +118,16 @@ class ParallelScoreCache:
 
         for dictionary in dictionaries:
             self._score_dict |= dictionary
-            self._delta_dict |= dictionary
 
     # DELTA MANAGEMENT METHODS
+
+    def get_delta(self):
+        """
+        Returns the cache delta
+        """
+
+        return self._delta_dict
+
     def clear_delta(self):
         """
         Empties the current delta values

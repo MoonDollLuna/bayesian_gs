@@ -2,8 +2,6 @@
 # Developed by Luna Jimenez Fernandez
 # Based on the work of Wenfeng Zhang et al.
 
-# IMPORTS #
-
 # Standard library
 import math
 from time import time
@@ -20,6 +18,7 @@ from tqdm import tqdm
 # NN GS speedup
 from dag_learning import BaseAlgorithm, find_legal_hillclimbing_operations
 from dag_scoring import average_markov_blanket, structural_moral_hamming_distance, percentage_difference
+from dag_scoring import ParallelBaseScore
 from dag_architectures import ExtendedDAG
 
 # PGMPY - Log Likelihood, bayesian network construction
@@ -28,20 +27,77 @@ from pgmpy.metrics import log_likelihood_score
 from pgmpy.readwrite.BIF import BIFWriter
 
 
-class HillClimbing(BaseAlgorithm):
+# CHILD METHODS #
+# An initializer and several parallelized methods are provided
+def child_initializer(scorer):
     """
-    `HillClimbing` implements a simple Greedy Search approach to Bayesian Network structure building.
+    Initializes the child processes / threads by storing a copy of the local scorer, containing:
+        - The full dataset
+        - The local cache
 
-    The algorithm works in a loop by trying all possible actions over the existing nodes (either adding
-    a new edge to the DAG or removing or inverting an already existing one).
+    This way, the full dataset does not need to be pickled and shared over the network constantly.
+    """
 
-    These actions are evaluated by using a total score metric for the Bayesian Network based on the
-    data provided, choosing the action that provides the biggest increase in local score.
+    # Declare the global variable and store the scorer
+    global local_scorer
+    local_scorer = scorer
 
-    This loop is continued until no action improves the current score, at which point a fully constructed
-    Bayesian Network based on the existing nodes and data is provided.
 
-    This algorithm serves as a baseline, to which all other algorithms implemented will be compared to.
+# Dictionary handling
+def child_dictionary_update_deltas(dictionary):
+    """
+    Given a dictionary of cache deltas (new cache entries since the last iteration),
+    update all child process / threads dictionaries
+
+    Parameters
+    ----------
+    dictionary: dict
+    """
+
+    # Access the global variable and update the cache
+    global local_scorer
+    local_scorer.score_cache.add_dictionary(dictionary)
+
+
+def child_dictionary_get_deltas():
+    """
+    Returns the cache deltas of each child process / threads, and wipes the cache delta.
+
+    Returns
+    -------
+    dictionary
+    """
+
+    # Access the global variable and update the cache
+    global local_scorer
+
+    # Extract the delta, wipe the cache delta and return it
+    delta = local_scorer.score_cache.get_delta()
+    local_scorer.score_cache.clear_delta()
+
+    return delta
+
+
+# Main work method
+def child_evaluate_actions():
+    pass
+
+
+class ParallelHillClimbing(BaseAlgorithm):
+    """
+    `ParallelHillClimbing implements a paralellized Greedy Search approach to Bayesian Network structure building,
+    by parallelizing the standard HillClimbing algorithm.
+
+    The algorithm works like HillClimbing, obtaining the same results. However, the following key differences are
+    present:
+    - The local score computation of possible actions is parallelized and distributed amongst several children
+      processes or threads for speed-up
+    - The "parent" process / thread joins the results, handles the master cache and distributes the workload
+    as needed.
+
+    TODO: SEE IF THIS IS TRUE
+    This algorithm can be launched as both multi-threaded (same process, multiple threads) or multi-process
+    (different processes sharing messages) by using concurrent.futures.
     """
 
     # MAIN METHODS #
