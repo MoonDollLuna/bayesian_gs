@@ -29,7 +29,7 @@ from pgmpy.readwrite.BIF import BIFWriter
 
 # CHILD METHODS #
 # An initializer and several parallelized methods are provided
-def child_initializer(scorer, dag):
+def child_process_initializer(scorer, dag):
     """
     Initializes the child processes / threads by storing a copy of the local scorer, containing:
         - The full dataset
@@ -49,7 +49,7 @@ def child_initializer(scorer, dag):
 
 
 # Dictionary handling
-def child_update_dag_dictionary(dictionary, action=None):
+def child_process_start_episode(dictionary, action=None):
     """
     Given a dictionary of cache deltas (new cache entries since the last iteration) and an action
     in the shape (action, (origin, goal)):
@@ -83,7 +83,7 @@ def child_update_dag_dictionary(dictionary, action=None):
             local_dag.invert_edge(X, Y)
 
 
-def child_dictionary_get_deltas():
+def child_process_end_episode():
     """
     Returns the cache deltas of each child process / threads, and wipes the cache delta.
 
@@ -103,7 +103,7 @@ def child_dictionary_get_deltas():
 
 
 # Main work method
-def child_evaluate_actions(chunked_action_list):
+def child_process_check_actions(chunked_action_list):
     """
     Given a list of actions in the shape (action_name, (start, end)),
     chooses the best action according to the local scorer and returns it, along its score.
@@ -149,9 +149,10 @@ def child_evaluate_actions(chunked_action_list):
             original_parents_list = local_dag.get_parents(Y)
             new_parents_list = original_parents_list + [X]
 
-            # TODO: INCLUDE TOTAL AND COMPUTED CHECKS
             # Compute the score delta and the possible new score
-            action_score_delta = local_scorer.local_score_delta(Y,
+            (action_score_delta,
+             action_computed_checks,
+             action_total_checks) = local_scorer.local_score_delta(Y,
                                                                 tuple(original_parents_list),
                                                                 tuple(new_parents_list))
 
@@ -159,95 +160,84 @@ def child_evaluate_actions(chunked_action_list):
         elif action == "remove":
 
             # Compute the hypothetical parents lists
-            original_parents_list = dag.get_parents(Y)
+            original_parents_list = local_dag.get_parents(Y)
             new_parents_list = original_parents_list[:]
             new_parents_list.remove(X)
 
             # Compute the score delta and the possible new score
-            action_score_delta = self.local_scorer.local_score_delta(Y,
-                                                                     tuple(original_parents_list),
-                                                                     tuple(new_parents_list))
+            (action_score_delta,
+             action_computed_checks,
+             action_total_checks) = local_scorer.local_score_delta(Y,
+                                                                   tuple(original_parents_list),
+                                                                   tuple(new_parents_list))
 
         # Inversion
         elif action == "invert":
 
             # Compute the hypothetical parents lists
             # Note: in this case, two families are being changed
-            original_x_parents_list = dag.get_parents(X)
+            original_x_parents_list = local_dag.get_parents(X)
             new_x_parents_list = original_x_parents_list + [Y]
 
-            original_y_parents_list = dag.get_parents(Y)
+            original_y_parents_list = local_dag.get_parents(Y)
             new_y_parents_list = original_y_parents_list[:]
             new_y_parents_list.remove(X)
 
             # Compute the score deltas
-            x_score_delta = self.local_scorer.local_score_delta(X,
-                                                                tuple(original_x_parents_list),
-                                                                tuple(new_x_parents_list))
-            y_spore_delta = self.local_scorer.local_score_delta(Y,
-                                                                tuple(original_y_parents_list),
-                                                                tuple(new_y_parents_list))
+            (x_action_score_delta,
+             x_action_computed_checks,
+             x_action_total_checks) = local_scorer.local_score_delta(X,
+                                                                     tuple(original_x_parents_list),
+                                                                     tuple(new_x_parents_list))
+            (y_action_score_delta,
+             y_action_computed_checks,
+             y_action_total_checks) = local_scorer.local_score_delta(Y,
+                                                                     tuple(original_y_parents_list),
+                                                                     tuple(new_y_parents_list))
 
             # Join the score deltas and the operation deltas
-            action_score_delta = x_score_delta + y_spore_delta
+            action_score_delta = x_action_score_delta + y_action_score_delta
+            action_computed_checks = x_action_computed_checks + y_action_computed_checks
+            action_total_checks = x_action_total_checks + y_action_total_checks
 
         # Operation checked:
-        # Compute the final score for the checked operation
-        operation_score = best_score + action_score_delta
 
-        # If the action improves the score, store it and all required information
-        if operation_score > current_best_score:
-            # Best score and delta
-            current_best_score = operation_score
+        # If the action improves the current delta, store it and all required information
+        if action_score_delta > score_delta:
             score_delta = action_score_delta
             action_taken = (action, (X, Y))
 
-    # ALL ACTIONS TRIED
+        # Update the check counters
+        computed_checks += action_computed_checks
+        total_checks += action_total_checks
 
-    # Check if an operation was chosen
-    if action_taken:
-
-        # Apply the chosen operation
-        operation, (X, Y) = action_taken
-
-        if operation == "add":
-            dag.add_edge(X, Y)
-            add_actions += 1
-        elif operation == "remove":
-            dag.remove_edge(X, Y)
-            remove_actions += 1
-        elif operation == "invert":
-            dag.invert_edge(X, Y)
-            invert_actions += 1
-
-        # Store the best score
-        best_score = current_best_score
-    pass
+    # Once an action is chosen, return it along all relevant information
+    return action_taken, score_delta, computed_checks, total_checks
 
 
 class ParallelHillClimbing(BaseAlgorithm):
     """
     `ParallelHillClimbing implements a parallelized Greedy Search approach to Bayesian Network structure building,
-    by parallelizing the standard HillClimbing algorithm.
+    by parallelizing the standard HillClimbing algorithm using multi-processing.
 
     The algorithm works like HillClimbing, obtaining the same results. However, the following key differences are
     present:
     - The local score computation of possible actions is parallelized and distributed amongst several children
-      processes or threads for speed-up
-    - The "parent" process / thread joins the results, handles the master cache and distributes the workload
+      processes for speed-up
+    - The "parent" process joins the results, handles the master cache and distributes the workload
     as needed.
-
-    TODO: SEE IF THIS IS TRUE
-    This algorithm can be launched as both multi-threaded (same process, multiple threads) or multi-process
-    (different processes sharing messages) by using concurrent.futures.
     """
+
+    # ATTRIBUTES
+    local_scorer: ParallelBaseScore
 
     # MAIN METHODS #
 
-    def search(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
+    def search(self, n_nodes=-1, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
                log_likelihood_size=1000, verbose=0):
         """
-        Performs Hill Climbing to find a local best DAG based on the score metric specified in the constructor.
+        Performs parallelized Hill Climbing to find a local best DAG based on the score metric
+        specified in the constructor.
 
         Note that the found DAG may not be optimal, but good enough.
 
@@ -255,6 +245,8 @@ class ParallelHillClimbing(BaseAlgorithm):
 
         Parameters
         ----------
+        n_nodes: int, default=-1
+            Number of child processes to use. If -1 is specified, the maximum number of available nodes is used.
         starting_dag: ExtendedDAG, optional
             Starting DAG. If not specified, an empty DAG is used.
         epsilon: float
@@ -319,7 +311,8 @@ class ParallelHillClimbing(BaseAlgorithm):
 
         # Write the initial header info - depending on the scoring method, different data might be shown
         header_dictionary = {
-            "Algorithm used": ("Hill Climbing", None, False),
+            "Algorithm used": ("Parallel Hill Climbing", None, False),
+            "Number of nodes used": (n_nodes, None, True),
             "Score method used": (self.score_type, None, True)
         }
 
@@ -338,7 +331,7 @@ class ParallelHillClimbing(BaseAlgorithm):
         # Pre-write the CSV column names
         self._write_column_names()
 
-        # Compute the initial score
+        # Compute the initial score - Non parallelized #
         # It is assumed that none of these scores will have been computed before
         for node in tqdm(list(dag.nodes), desc="Initial scoring", disable=(verbose < 4)):
             # Compute the score for each node
