@@ -9,6 +9,11 @@ import datetime
 import os
 from pathlib import Path
 
+# Multiprocessing
+from os import cpu_count
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import wait, as_completed
+
 # PyDoc
 from typing import Iterable
 
@@ -38,6 +43,13 @@ def child_process_initializer(scorer, dag):
     In addition, a copy of the DAG being built is sent to be used for local score computations.
 
     This way, the full dataset and DAG does not need to be pickled and shared over the network constantly.
+
+    Parameters
+    ----------
+        scorer: ParallelBaseScore
+            Local scorer used by the parent node
+        dag: ExtendedDAG
+            DAG initialized by the parent node
     """
 
     # Declare the global variables
@@ -49,7 +61,7 @@ def child_process_initializer(scorer, dag):
 
 
 # Dictionary handling
-def child_process_start_episode(dictionary, action=None):
+def child_process_start_episode(dictionary):
     """
     Given a dictionary of cache deltas (new cache entries since the last iteration) and an action
     in the shape (action, (origin, goal)):
@@ -71,6 +83,25 @@ def child_process_start_episode(dictionary, action=None):
     # Update the dictionary with the provided delta
     local_scorer.score_cache.add_dictionary(dictionary)
 
+
+def child_process_end_episode(action=None):
+    """
+    Returns the cache deltas of each child process / threads, applies the specified action
+    and wipes the cache delta.
+
+    Parameters
+    ----------
+    action: tuple[str, tuple[str, str]]
+        Action in the shape (<add/remove/invert>, (origin, goal))
+
+    Returns
+    -------
+    dictionary
+    """
+
+    # Access the global variables
+    global local_scorer
+
     # According to the action (if one is provided), update the local DAG
     if action:
         operation, (X, Y) = action
@@ -81,19 +112,6 @@ def child_process_start_episode(dictionary, action=None):
             local_dag.remove_edge(X, Y)
         elif operation == "invert":
             local_dag.invert_edge(X, Y)
-
-
-def child_process_end_episode():
-    """
-    Returns the cache deltas of each child process / threads, and wipes the cache delta.
-
-    Returns
-    -------
-    dictionary
-    """
-
-    # Access the global variable and update the cache
-    global local_scorer
 
     # Extract the delta, wipe the cache delta and return it
     delta = local_scorer.score_cache.get_delta()
@@ -233,7 +251,8 @@ class ParallelHillClimbing(BaseAlgorithm):
 
     # MAIN METHODS #
 
-    def search(self, n_nodes=-1, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
+    def search(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
+               n_workers=None, jobs_per_worker=8,
                log_likelihood_size=1000, verbose=0):
         """
         Performs parallelized Hill Climbing to find a local best DAG based on the score metric
@@ -245,8 +264,6 @@ class ParallelHillClimbing(BaseAlgorithm):
 
         Parameters
         ----------
-        n_nodes: int, default=-1
-            Number of child processes to use. If -1 is specified, the maximum number of available nodes is used.
         starting_dag: ExtendedDAG, optional
             Starting DAG. If not specified, an empty DAG is used.
         epsilon: float
@@ -254,6 +271,10 @@ class ParallelHillClimbing(BaseAlgorithm):
             the algorithm stops
         max_iterations: int
             Maximum number of iterations to perform.
+        n_workers: int, optional
+            Number of child processes to use. If not specified, the maximum number of available nodes is used.
+        jobs_per_worker: int, default=4
+            Approximate number of chunks processed by worker per iteration
         verbose: int, default = 0
             Verbosity of the program, where:
                 - 0: No information is printed
@@ -307,6 +328,10 @@ class ParallelHillClimbing(BaseAlgorithm):
         else:
             dag = ExtendedDAG(self.nodes)
 
+        # If necessary, obtain the maximum number of possible workers
+        if not n_workers:
+            n_workers = os.cpu_count()
+
         # MAIN LOOP #
 
         # Write the initial header info - depending on the scoring method, different data might be shown
@@ -331,7 +356,8 @@ class ParallelHillClimbing(BaseAlgorithm):
         # Pre-write the CSV column names
         self._write_column_names()
 
-        # Compute the initial score - Non parallelized #
+        # Compute the initial score - Non parallelized ################################################################
+
         # It is assumed that none of these scores will have been computed before
         for node in tqdm(list(dag.nodes), desc="Initial scoring", disable=(verbose < 4)):
             # Compute the score for each node
@@ -351,6 +377,13 @@ class ParallelHillClimbing(BaseAlgorithm):
         if verbose >= 4:
             print("Initial score: {}".format(best_score))
 
+        ###############################################################################################################
+
+        # Pre loop - create the child processes and initialize them
+        process_pool = ProcessPoolExecutor(max_workers=n_workers,
+                                           initializer=child_process_initializer,
+                                           initargs=(self.local_scorer, dag))
+
         # Run the loop until:
         #   - The score improvement is not above the tolerance threshold
         #   - The maximum number of iterations is reached
@@ -361,12 +394,27 @@ class ParallelHillClimbing(BaseAlgorithm):
             current_best_score = best_score
             action_taken = None
 
-            # Compute all possible actions for the current DAG
+            # Prepare the child processes
+            process_pool.map(child_process_start_episode,
+                             [self.local_scorer.score_cache.get_delta() for _ in range(n_workers)],
+                             chunksize=1)
+
+            # Compute all possible actions for the current DAG and clear the delta cache
+            self.local_scorer.score_cache.clear_delta()
             actions = find_legal_hillclimbing_operations(dag)
 
-            # If necessary (TQDM not used) print the header
-            if verbose == 1:
-                print("= ITERATION {}".format(iterations + 1))
+            # Print the header - TQDM is not used
+            print("= ITERATION {}".format(iterations + 1))
+
+            # MAIN LOOP - Distribute the actions through the child processes and keep updating the best action
+            # as the works finish
+
+            worker_actions = process_pool.map(child_process_check_actions,
+                                              actions,
+                                              chunksize=len(actions) // (n_workers * jobs_per_worker))
+
+            for (action_name, (X, Y)), best_score_delta, worker_computed_checks, total_computed_checks in as_completed(worker_actions):
+                pass
 
             # Loop through all actions (using TQDM)
             for action, (X, Y) in tqdm(actions,
@@ -418,12 +466,12 @@ class ParallelHillClimbing(BaseAlgorithm):
                     x_score_delta = self.local_scorer.local_score_delta(X,
                                                                         tuple(original_x_parents_list),
                                                                         tuple(new_x_parents_list))
-                    y_spore_delta = self.local_scorer.local_score_delta(Y,
+                    y_score_delta = self.local_scorer.local_score_delta(Y,
                                                                         tuple(original_y_parents_list),
                                                                         tuple(new_y_parents_list))
 
                     # Join the score deltas and the operation deltas
-                    action_score_delta = x_score_delta + y_spore_delta
+                    action_score_delta = x_score_delta + y_score_delta
 
                 # Operation checked:
                 # Compute the final score for the checked operation
