@@ -354,7 +354,7 @@ if __name__ == "__main__":
 
     elif algorithm == "parallelhillclimbing":
         from dag_learning import ParallelHillClimbing
-        
+
         starting_dag_path = arguments["starting_dag_path"]
 
         # All numeric values must be positive (or not negative for epsilon)

@@ -83,33 +83,49 @@ dataset_ids = list(range(1, 11))
 dataset_sizes = [10000]
 
 # Algorithms
-algorithms = ["hillclimbing"]
+algorithms = ["hillclimbing", "parallelhillclimbing"]
 
 # Scoring methods
 scoring_methods = ["bdeu", "ll", "bic", "aic"]
+
+# MULTIPROCESSING ONLY
+# Number of workers
+n_workers = [2, 4, 8, 16]
+
+# Number of jobs per worker
+n_jobs = [2, 5, 10]
 
 # FILE CREATION AND JSON CREATION#
 # File is directly created and handled using the "with" Python interface
 with open("experiment_list.txt", "w") as file:
 
     # Generate all possible combinations of arguments
-    arguments_lists = [network_names, dataset_ids, dataset_sizes, algorithms, scoring_methods]
+    arguments_lists = [network_names, dataset_ids, dataset_sizes, algorithms, scoring_methods, n_workers, n_jobs]
     arguments_combinations = list(product(*arguments_lists))
 
     # Create an appropriate string for each argument combination
-    for network_name, dataset_id, dataset_size, algorithm, scoring_method in arguments_combinations:
+    for network_name, dataset_id, dataset_size, algorithm, scoring_method, n_workers, n_jobs in arguments_combinations:
 
         network_size = network_sizes[network_name]
 
-        experiment_string = ("--dataset {} --bif {} --algorithm {} --score {} "
-                             "--results_log_path {} --results_bif_path {}\n").format(
-            csv_file_path.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id),
-            bif_file_path.format(network_size, network_name),
-            algorithm,
-            scoring_method,
-            results_log_path.format(network_size, network_name, algorithm, scoring_method),
-            results_bif_path.format(network_size, network_name, algorithm, scoring_method)
-        )
+        # Only print n_workers and n_jobs if the algorithm is parallelized
+        if algorithm in {"parallelhillclimbing"}:
+            experiment_string = (
+                f"--dataset {csv_file_path.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id)} "
+                f"--bif {bif_file_path.format(network_size, network_name)} "
+                f"--algorithm {algorithm} --n_workers {n_workers} --n_jobs_per_worker {n_jobs} "
+                f"--score {scoring_method} "
+                f"--results_log_path {results_log_path.format(network_size, network_name, algorithm, scoring_method)} "
+                f"--results_bif_path {results_bif_path.format(network_size, network_name, algorithm, scoring_method)}\n")
+
+        else:
+            experiment_string = (
+                f"--dataset {csv_file_path.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id)} "
+                f"--bif {bif_file_path.format(network_size, network_name)} "
+                f"--algorithm {algorithm} "
+                f"--score {scoring_method} "
+                f"--results_log_path {results_log_path.format(network_size, network_name, algorithm, scoring_method)} "
+                f"--results_bif_path {results_bif_path.format(network_size, network_name, algorithm, scoring_method)}\n")
 
         # Write the string arguments into the file
         file.write(experiment_string)
