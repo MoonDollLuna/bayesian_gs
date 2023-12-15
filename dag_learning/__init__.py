@@ -11,4 +11,4 @@ from .base_algorithm import BaseAlgorithm
 
 from .hill_climbing.hill_climbing_utilities import find_legal_hillclimbing_operations
 from .hill_climbing.hill_climbing import HillClimbing
-
+from .hill_climbing.parallel_hill_climbing import ParallelHillClimbing

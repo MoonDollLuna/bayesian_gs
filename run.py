@@ -125,7 +125,7 @@ if __name__ == "__main__":
     # Algorithm used - which version of Hill Climbing to use
     parser.add_argument("-alg",
                         "--algorithm",
-                        choices=["hillclimbing"],
+                        choices=["hillclimbing", "parallelhillclimbing"],
                         help="Algorithm to perform.",
                         default="hillclimbing")
 
@@ -136,10 +136,7 @@ if __name__ == "__main__":
                         help="Scoring method used to measure the quality of the DAG during the algorithm.",
                         default="bdeu")
 
-    # SCORE-SPECIFIC ARGUMENTS #
-
-    # BDEU SPECIFIC ARGUMENTS
-    # BDeu equivalent sample size
+    # BDeu only - BDeu equivalent sample size
     parser.add_argument("-bdeus",
                         "--bdeu_sample_size",
                         type=int,
@@ -189,6 +186,26 @@ if __name__ == "__main__":
                         help="ONLY USED IF A BIF FILE IS SPECIFIED. "
                              "Size (in instances) of the sample used for log likelihood.",
                         default=1000)
+
+    # PARALLEL ALGORITHMS ONLY
+    # Maximum number of worker processes
+    parser.add_argument("-nwork",
+                        "--n_workers",
+                        type=int,
+                        metavar="[nwork > 1]",
+                        help="ONLY USED FOR PARALLELIZED ALGORITHMS. "
+                             "(Maximum) Number of worker processes used by the algorithm. If not specified, "
+                             "the maximum number of free CPU cores is used instead.",
+                        default=None)
+
+    # Approximate number of jobs per worker
+    parser.add_argument("-njobwork",
+                        "--n_jobs_per_worker",
+                        type=int,
+                        metavar="[njobwork > 0]",
+                        help="ONLY USED FOR PARALLELIZED ALGORITHMS. "
+                             "(Approximate) Number of jobs to be done per worker, per iteration.",
+                        default=4)
 
     # RESULTS ARGUMENTS #
 
@@ -273,6 +290,13 @@ if __name__ == "__main__":
 
     # ALGORITHM AND SCORE ARGUMENTS
     algorithm = arguments["algorithm"]
+
+    # SANITY CHECK: If a parallelized algorithm tries to be launched with a single worker,
+    # the serialized version should be launched instead
+
+    if algorithm == "parallelhillclimbing" and arguments["n_workers"] == 1:
+        algorithm = "hillclimbing"
+
     score_method = arguments["score"]
 
     # BDeu specific arguments
@@ -292,7 +316,6 @@ if __name__ == "__main__":
 
     # ALGORITHM SPECIFIC ARGUMENT PARSING AND EXECUTION #
     # Only parse the relevant arguments for the algorithm
-
     if algorithm == "hillclimbing":
         from dag_learning import HillClimbing
 
@@ -329,6 +352,56 @@ if __name__ == "__main__":
                                              max_iterations=iterations, log_likelihood_size=loglikelihood_sample_size,
                                              verbose=verbosity)
 
+    elif algorithm == "parallelhillclimbing":
+        from dag_learning import ParallelHillClimbing
+        
+        starting_dag_path = arguments["starting_dag_path"]
+
+        # All numeric values must be positive (or not negative for epsilon)
+        epsilon = arguments["epsilon"]
+        if epsilon < 0:
+            raise ValueError("Epsilon cannot be a negative number.")
+
+        iterations = arguments["algorithm_iterations"]
+        if iterations <= 0:
+            raise ValueError("The number of iterations must be a positive number.")
+
+        loglikelihood_sample_size = arguments["loglikelihood_sample_size"]
+        if loglikelihood_sample_size <= 0:
+            raise ValueError("The number of iterations must be a positive number.")
+
+        # Number of workers CAN be None, so it must be checked with care
+        n_workers = arguments["n_workers"]
+        if n_workers:   # Not None
+            if n_workers <= 1:   # Either 1 (should be impossible) or an invalid number
+                raise ValueError("The number of workers must be above 1.")
+
+        n_jobs_per_worker = arguments["n_jobs_per_worker"]
+        if n_jobs_per_worker <= 0:
+            raise ValueError("The number of jobs per worker must be positive.")
+
+        # Create the Hill Climbing instance and launch the experiment
+        if score_method == "bdeu":
+            p_hill_climbing = ParallelHillClimbing(csv_path, nodes=None,
+                                                   bayesian_network=bif_path, score_method=score_method,
+                                                   results_log_path=results_log_path,
+                                                   results_bif_path=results_bif_path,
+                                                   results_file_name=results_file_name,
+                                                   results_flush_freq=results_flush_frequency,
+                                                   bdeu_equivalent_sample_size=bdeu_esz)
+        else:
+            p_hill_climbing = ParallelHillClimbing(csv_path, nodes=None,
+                                                   bayesian_network=bif_path, score_method=score_method,
+                                                   results_log_path=results_log_path,
+                                                   results_bif_path=results_bif_path,
+                                                   results_file_name=results_file_name,
+                                                   results_flush_freq=results_flush_frequency)
+
+        # Perform Parallel Hill Climbing
+        resulting_dag = p_hill_climbing.search(starting_dag=starting_dag_path, epsilon=epsilon,
+                                               max_iterations=iterations,
+                                               n_workers=n_workers, jobs_per_worker=n_jobs_per_worker,
+                                               log_likelihood_size=loglikelihood_sample_size,
+                                               verbose=verbosity)
     else:
-        # TODO ADD MORE ALGORITHMS
-        raise NotImplementedError("Only HillClimbing is currently implemented")
+        raise NotImplementedError("The specified algorithm is not currently implemented")

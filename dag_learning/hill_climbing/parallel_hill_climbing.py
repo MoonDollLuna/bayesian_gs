@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 # Multiprocessing
-from os import cpu_count
+import os
 from concurrent.futures import ProcessPoolExecutor
 
 # PyDoc
@@ -320,7 +320,7 @@ class ParallelHillClimbing(BaseAlgorithm):
 
         # If necessary, obtain the maximum number of possible workers
         if not n_workers:
-            n_workers = cpu_count()
+            n_workers = len(os.sched_getaffinity(0))
 
         # MAIN LOOP #
 
