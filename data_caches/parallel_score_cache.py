@@ -96,7 +96,7 @@ class ParallelScoreCache:
 
     def add_dictionary(self, dictionary):
         """
-        Adds a dictionary of pre-existing values
+        Adds a dictionary of pre-existing values to both the local and delta cache
 
         Parameters
         ----------
@@ -105,19 +105,7 @@ class ParallelScoreCache:
         """
 
         self._score_dict |= dictionary
-
-    def aggregate_dictionaries(self, *dictionaries):
-        """
-        Aggregates an indeterminate number of pre-existing dictionaries of values
-
-        Parameters
-        ----------
-        dictionaries: Iterable[dict]
-            Any number of dictionaries containing pairs of (node, parents) and scores
-        """
-
-        for dictionary in dictionaries:
-            self._score_dict |= dictionary
+        self._delta_dict |= dictionary
 
     # DELTA MANAGEMENT METHODS
 

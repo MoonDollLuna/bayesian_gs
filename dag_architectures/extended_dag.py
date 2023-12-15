@@ -496,7 +496,7 @@ class ExtendedDAG(DAG):
         ------
         NetworkXError
            If u or v are not in the graph.
-       TypeError
+        TypeError
             If a node is neither an int or a string.
         """
 
