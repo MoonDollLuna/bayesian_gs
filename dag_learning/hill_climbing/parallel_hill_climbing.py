@@ -6,12 +6,13 @@
 import math
 from time import time
 import datetime
-import os
 from pathlib import Path
+
+import numpy as np
 
 # Multiprocessing
 import os
-from concurrent.futures import ProcessPoolExecutor
+from multiprocessing.pool import Pool
 
 # PyDoc
 from typing import Iterable
@@ -78,10 +79,8 @@ def child_process_update(dictionary, action):
 
     # Access the necessary global variables
     global local_scorer, local_dag, actions_performed
-    local_scorer: ParallelBaseScore
 
     # Step 1 - Update the local dictionary
-
     local_scorer.score_cache.add_dictionary(dictionary)
 
     # Step 2 - Perform the action
@@ -372,9 +371,9 @@ class ParallelHillClimbing(BaseAlgorithm):
 
         # Pre loop - create the child processes and initialize them
         # (share the current state of the scorer and the DAG)
-        process_pool = ProcessPoolExecutor(max_workers=n_workers,
-                                           initializer=child_process_initializer,
-                                           initargs=(self.local_scorer, dag))
+        process_pool = Pool(processes=n_workers,
+                            initializer=child_process_initializer,
+                            initargs=(self.local_scorer, dag))
 
         # Run the loop until:
         #   - The score improvement is not above the tolerance threshold
@@ -390,11 +389,13 @@ class ParallelHillClimbing(BaseAlgorithm):
             iteration_total_checks = 0
             iteration_computed_checks = 0
 
-            # Compute all possible actions for the current DAG
-            actions = find_legal_hillclimbing_operations(dag)
-
             # Print the header - TQDM is not used
             print("= ITERATION {}".format(iterations + 1))
+
+            # Compute all possible actions for the current DAG and approximately chunk them
+            actions = find_legal_hillclimbing_operations(dag)
+            actions_array = np.array(actions, dtype=object)
+            chunked_actions = np.array_split(actions_array, n_workers * jobs_per_worker)
 
             # MAIN LOOP - Distribute the actions through the child processes and
             # keep updating the best action as the works finish
@@ -402,9 +403,8 @@ class ParallelHillClimbing(BaseAlgorithm):
                  worker_score_delta,
                  worker_computed_checks,
                  worker_total_checks,
-                 worker_cache_delta) in process_pool.map(child_process_check_actions, actions,
-                                                         chunksize=len(actions) // (n_workers * jobs_per_worker)):
-
+                 worker_cache_delta) in process_pool.imap_unordered(child_process_check_actions, chunked_actions,
+                                                                    chunksize=1):
                 # If the action improves the score delta, keep it
                 if worker_score_delta > score_delta:
                     score_delta = worker_score_delta
@@ -442,10 +442,10 @@ class ParallelHillClimbing(BaseAlgorithm):
                 # Update the child process with the parent cache and action
                 # NOTE: This is only done if an action was chosen - otherwise, the algorithm has ended
                 # and there is no need to further update the worker processes
-                process_pool.map(child_process_update,
-                                 [self.local_scorer.score_cache.get_delta() for _ in range(n_workers)],
-                                 [action_taken for _ in range(n_workers)],
-                                 chunksize=1)
+                process_pool.starmap_async(child_process_update,
+                                           [(self.local_scorer.score_cache.get_delta(), action_taken)
+                                            for _ in range(n_workers)],
+                                           chunksize=1)
 
                 # Wipe the parent cache
                 self.local_scorer.score_cache.clear_delta()
@@ -504,7 +504,7 @@ class ParallelHillClimbing(BaseAlgorithm):
         # METRICS COMPUTATION AND STORAGE
 
         # Close the worker pool to release resources
-        process_pool.shutdown()
+        process_pool.close()
 
         # Create an empty DAG to compute comparative scores
         empty_dag = ExtendedDAG(self.nodes)
