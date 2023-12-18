@@ -108,6 +108,12 @@ class ParallelScoreCache:
         self._delta_dict |= dictionary
 
     # DELTA MANAGEMENT METHODS
+    def get_cache(self):
+        """
+        Returns the actual full cache
+        """
+
+        return self._score_dict
 
     def get_delta(self):
         """

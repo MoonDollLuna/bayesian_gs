@@ -147,6 +147,9 @@ class ParallelBDeuScore(ParallelBaseScore):
             # Given the prior probability, the parents term and the variable term, return the sum
             final_value = prior_value + variable_value + parent_value
 
+            # Add the score to the cache
+            self.score_cache.add_score(node, parents, final_value)
+
             return final_value, True
 
     # UTILITY FUNCTIONS #

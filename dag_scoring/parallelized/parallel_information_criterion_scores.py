@@ -102,6 +102,9 @@ class ParallelLLScore(ParallelBaseScore):
             log_value = (log_numerator - log_denominator) * state_counts
             log_likelihood_score = np.sum(log_value)
 
+            # Add the score to the cache
+            self.score_cache.add_score(node, parents, log_likelihood_score)
+
             return log_likelihood_score, True
 
 
@@ -190,6 +193,9 @@ class ParallelBICScore(ParallelBaseScore):
             b_score = (variable_length - 1) * parent_length
             bic_score = log_likelihood_score - (0.5 * math.log(len(self.data)) * b_score)
 
+            # Add the score to the cache
+            self.score_cache.add_score(node, parents, bic_score)
+
             return bic_score, True
 
 
@@ -277,5 +283,8 @@ class ParallelAICScore(ParallelBaseScore):
             # The Log-likelihood score is multiplied by its entropy and how much parameters it needs to encode
             b_score = (variable_length - 1) * parent_length
             aic_score = log_likelihood_score - b_score
+
+            # Add the score to the cache
+            self.score_cache.add_score(node, parents, aic_score)
 
             return aic_score, True

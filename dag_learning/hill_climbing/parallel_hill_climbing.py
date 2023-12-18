@@ -415,8 +415,17 @@ class ParallelHillClimbing(BaseAlgorithm):
                 iteration_total_checks += worker_total_checks
                 iteration_computed_checks += worker_computed_checks
 
+                print(worker_action)
+                print(worker_score_delta)
+                print(computed_checks)
+                print(total_checks)
+                print(worker_cache_delta)
+
+                print("\n")
+                print(self.local_scorer.score_cache.get_cache())
                 # Update the parent dictionary
                 self.local_scorer.score_cache.add_dictionary(worker_cache_delta)
+                print(self.local_scorer.score_cache.get_delta())
 
             # ALL WORKER JOBS FINISHED
 
@@ -442,6 +451,9 @@ class ParallelHillClimbing(BaseAlgorithm):
                 # Update the child process with the parent cache and action
                 # NOTE: This is only done if an action was chosen - otherwise, the algorithm has ended
                 # and there is no need to further update the worker processes
+                print(self.local_scorer.score_cache.get_delta())
+                print(action_taken)
+
                 process_pool.starmap_async(child_process_update,
                                            [(self.local_scorer.score_cache.get_delta(), action_taken)
                                             for _ in range(n_workers)],
