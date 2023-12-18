@@ -267,9 +267,9 @@ class ParallelHillClimbing(BaseAlgorithm):
             Verbosity of the program, where:
                 - 0: No information is printed
                 - 1: Final results and iteration numbers are printed
-                - 2: Progress bar for each iteration is printed
-                - 3: Action taken for each step is printed
-                - 4: Intermediate results for each step are printed
+                - 2: Action taken for each step and actions per iteration is printed
+                - 3: Full information for each iteration is printed
+                - 4: Job-by-job information for each iteration is printed
                 - 5: Graph is printed (as a string)
         log_likelihood_size: int, default=1000
             Size of the data sample generated for the log likelihood score
@@ -364,7 +364,7 @@ class ParallelHillClimbing(BaseAlgorithm):
                                             total_checks, total_checks, initial_time_taken, initial_time_taken])
 
         # If necessary, output the initial score - this will not be logged
-        if verbose >= 4:
+        if verbose >= 3:
             print("Initial score: {}".format(best_score))
 
         ###############################################################################################################
@@ -389,13 +389,21 @@ class ParallelHillClimbing(BaseAlgorithm):
             iteration_total_checks = 0
             iteration_computed_checks = 0
 
-            # Print the header - TQDM is not used
-            print("= ITERATION {}".format(iterations + 1))
+            # Print the header if the verbosity is appropriate - TQDM is not used
+            if verbose >= 1:
+                print("= ITERATION {}".format(iterations + 1))
 
             # Compute all possible actions for the current DAG and approximately chunk them
+            # (order is not kept)
             actions = find_legal_hillclimbing_operations(dag)
-            actions_array = np.array(actions, dtype=object)
-            chunked_actions = np.array_split(actions_array, n_workers * jobs_per_worker)
+            n_chunks = n_workers * jobs_per_worker
+            chunked_actions = [actions[i::n_chunks] for i in range(n_chunks)]
+
+            # Print iteration info if verbosity is appropriate
+            if verbose >= 2:
+                print(f"Actions to check: {len(actions)}")
+                print(f"Number of jobs: {len(chunked_actions)}")
+                print(f"Approximate size per job: {len(actions) // n_chunks}")
 
             # MAIN LOOP - Distribute the actions through the child processes and
             # keep updating the best action as the works finish
@@ -405,6 +413,7 @@ class ParallelHillClimbing(BaseAlgorithm):
                  worker_total_checks,
                  worker_cache_delta) in process_pool.imap_unordered(child_process_check_actions, chunked_actions,
                                                                     chunksize=1):
+
                 # If the action improves the score delta, keep it
                 if worker_score_delta > score_delta:
                     score_delta = worker_score_delta
@@ -415,17 +424,13 @@ class ParallelHillClimbing(BaseAlgorithm):
                 iteration_total_checks += worker_total_checks
                 iteration_computed_checks += worker_computed_checks
 
-                print(worker_action)
-                print(worker_score_delta)
-                print(computed_checks)
-                print(total_checks)
-                print(worker_cache_delta)
+                # If the verbosity is appropriate, print the results of the job
+                if verbose >= 4:
+                    # TODO PRINT RESULTS OF THE JOB
+                    pass
 
-                print("\n")
-                print(self.local_scorer.score_cache.get_cache())
                 # Update the parent dictionary
                 self.local_scorer.score_cache.add_dictionary(worker_cache_delta)
-                print(self.local_scorer.score_cache.get_delta())
 
             # ALL WORKER JOBS FINISHED
 
@@ -451,9 +456,6 @@ class ParallelHillClimbing(BaseAlgorithm):
                 # Update the child process with the parent cache and action
                 # NOTE: This is only done if an action was chosen - otherwise, the algorithm has ended
                 # and there is no need to further update the worker processes
-                print(self.local_scorer.score_cache.get_delta())
-                print(action_taken)
-
                 process_pool.starmap_async(child_process_update,
                                            [(self.local_scorer.score_cache.get_delta(), action_taken)
                                             for _ in range(n_workers)],
@@ -510,7 +512,7 @@ class ParallelHillClimbing(BaseAlgorithm):
                                                 best_score, score_delta, computed_checks, computed_checks_delta,
                                                 total_checks, total_checks_delta, time_taken, time_taken_delta])
             self.results_logger.print_iteration_data(iteration_key_data, iteration_extra_data,
-                                                     verbosity=verbose, minimum_verbosity=3, minimum_extra_verbosity=4)
+                                                     verbosity=verbose, minimum_verbosity=2, minimum_extra_verbosity=3)
 
         # END OF THE LOOP - DAG FINALIZED
         # METRICS COMPUTATION AND STORAGE
