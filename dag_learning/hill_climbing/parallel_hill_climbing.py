@@ -327,7 +327,8 @@ class ParallelHillClimbing(BaseAlgorithm):
         # Write the initial header info - depending on the scoring method, different data might be shown
         header_dictionary = {
             "Algorithm used": ("Parallel Hill Climbing", None, False),
-            "Number of nodes used": (n_workers, None, True),
+            "Number of workers used": (n_workers, None, True),
+            "Number of jobs per worker": (jobs_per_worker, None, True),
             "Score method used": (self.score_type, None, True)
         }
 

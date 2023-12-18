@@ -54,6 +54,8 @@ bif_file_path = "./input/bif/{}/{}.bif"
 #   6 - Dataset ID
 csv_file_path = "./input/csv/{}/{}/{}/{}-{}_{}.csv"
 
+
+
 # Results log path, where {} represents:
 #   1 - Dataset name
 #   2 - Dataset size
@@ -90,42 +92,70 @@ scoring_methods = ["bdeu", "ll", "bic", "aic"]
 
 # MULTIPROCESSING ONLY
 # Number of workers
-n_workers = [2, 4, 8, 16]
+n_workers = [2, 4, 8, 12, 16]
 
 # Number of jobs per worker
-n_jobs = [2, 5, 10]
+n_jobs = [2, 5, 10, 20]
 
-# FILE CREATION AND JSON CREATION#
-# File is directly created and handled using the "with" Python interface
-with open("experiment_list.txt", "w") as file:
+# FILE CREATION AND JSON CREATION #
 
-    # Generate all possible combinations of arguments
-    arguments_lists = [network_names, dataset_ids, dataset_sizes, algorithms, scoring_methods, n_workers, n_jobs]
-    arguments_combinations = list(product(*arguments_lists))
+# Loop through all algorithms
+for algorithm in algorithms:
 
-    # Create an appropriate string for each argument combination
-    for network_name, dataset_id, dataset_size, algorithm, scoring_method, n_workers, n_jobs in arguments_combinations:
+    # Process each algorithm separately - they may need different arguments
 
-        network_size = network_sizes[network_name]
+    # Serialized Hill climbing
+    if algorithm == "hillclimbing":
 
-        # Only print n_workers and n_jobs if the algorithm is parallelized
-        if algorithm in {"parallelhillclimbing"}:
-            experiment_string = (
-                f"--dataset {csv_file_path.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id)} "
-                f"--bif {bif_file_path.format(network_size, network_name)} "
-                f"--algorithm {algorithm} --n_workers {n_workers} --n_jobs_per_worker {n_jobs} "
-                f"--score {scoring_method} "
-                f"--results_log_path {results_log_path.format(network_size, network_name, algorithm, scoring_method)} "
-                f"--results_bif_path {results_bif_path.format(network_size, network_name, algorithm, scoring_method)}\n")
+        # Generate all possible combinations of arguments
+        arguments_lists = [network_names, dataset_ids, dataset_sizes, scoring_methods]
+        arguments_combinations = list(product(*arguments_lists))
 
-        else:
-            experiment_string = (
-                f"--dataset {csv_file_path.format(network_size, network_name, dataset_size, network_name, dataset_size, dataset_id)} "
-                f"--bif {bif_file_path.format(network_size, network_name)} "
-                f"--algorithm {algorithm} "
-                f"--score {scoring_method} "
-                f"--results_log_path {results_log_path.format(network_size, network_name, algorithm, scoring_method)} "
-                f"--results_bif_path {results_bif_path.format(network_size, network_name, algorithm, scoring_method)}\n")
+        # Open the file with the appropriate name
+        with open("experiment_list_hc_serialized.txt", "w") as file:
 
-        # Write the string arguments into the file
-        file.write(experiment_string)
+            # Create an appropriate string for each argument combination
+            for network_name, dataset_id, dataset_size, scoring_method in arguments_combinations:
+
+                network_size = network_sizes[network_name]
+
+                experiment_string = (
+                    f"--dataset ./input/csv/{network_size}/{network_name}/{dataset_size}/{network_name}-{dataset_size}_{dataset_id}.csv "
+                    f"--bif ./input/bif/{network_size}/{network_name}.bif "
+                    f"--algorithm {algorithm} "
+                    f"--score {scoring_method} "
+                    f"--results_log_path ./output/{network_size}/{network_name}/{dataset_size}/{algorithm}/{scoring_method}/log/ "
+                    f"--results_bif_path ./output/{network_size}/{network_name}/{dataset_size}/{algorithm}/{scoring_method}/bif/\n")
+
+                # Write the string arguments into the file
+                file.write(experiment_string)
+
+    # Parallelized Hill Climbing
+    elif algorithm == "parallelhillclimbing":
+
+        # Generate all possible combinations of arguments
+        arguments_lists = [network_names, dataset_ids, dataset_sizes, scoring_methods, n_jobs]
+        arguments_combinations = list(product(*arguments_lists))
+
+        # Loop through all number of workers
+        for n_work in n_workers:
+
+            # Open the file with the appropriate name
+            with open(f"experiment_list_hc_parallelized_{n_work}workers.txt", "w") as file:
+
+                # Create an appropriate string for each argument combination
+                for network_name, dataset_id, dataset_size, scoring_method, job_count in arguments_combinations:
+                    network_size = network_sizes[network_name]
+
+                    experiment_string = (
+                        f"--dataset ./input/csv/{network_size}/{network_name}/{dataset_size}/{network_name}-{dataset_size}_{dataset_id}.csv "
+                        f"--bif ./input/bif/{network_size}/{network_name}.bif "
+                        f"--algorithm {algorithm} "
+                        f"--score {scoring_method} "
+                        f"--n_workers {n_work} "
+                        f"--n_jobs_per_worker {job_count} "
+                        f"--results_log_path ./output/{network_size}/{network_name}/{dataset_size}/{algorithm}/{n_work}workers/{job_count}jobs/{scoring_method}/log/ "
+                        f"--results_bif_path ./output/{network_size}/{network_name}/{dataset_size}/{algorithm}/{n_work}workers/{job_count}jobs/{scoring_method}/bif/\n")
+
+                    # Write the string arguments into the file
+                    file.write(experiment_string)
