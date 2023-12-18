@@ -401,9 +401,9 @@ class ParallelHillClimbing(BaseAlgorithm):
 
             # Print iteration info if verbosity is appropriate
             if verbose >= 2:
-                print(f"Actions to check: {len(actions)}")
-                print(f"Number of jobs: {len(chunked_actions)}")
-                print(f"Approximate size per job: {len(actions) // n_chunks}")
+                print(f"- Actions to check: {len(actions)}")
+                print(f"- Number of jobs: {len(chunked_actions)}")
+                print(f"- Approximate size per job: {len(actions) // n_chunks}\n")
 
             # MAIN LOOP - Distribute the actions through the child processes and
             # keep updating the best action as the works finish
