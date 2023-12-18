@@ -380,8 +380,11 @@ if __name__ == "__main__":
         if n_jobs_per_worker <= 0:
             raise ValueError("The number of jobs per worker must be positive.")
 
+        # Modify the scoring method to add a p
+        score_method = "p" + score_method
+
         # Create the Hill Climbing instance and launch the experiment
-        if score_method == "bdeu":
+        if score_method == "pbdeu":
             p_hill_climbing = ParallelHillClimbing(csv_path, nodes=None,
                                                    bayesian_network=bif_path, score_method=score_method,
                                                    results_log_path=results_log_path,

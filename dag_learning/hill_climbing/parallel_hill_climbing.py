@@ -239,7 +239,6 @@ class ParallelHillClimbing(BaseAlgorithm):
     local_scorer: ParallelBaseScore
 
     # MAIN METHODS #
-
     def search(self, starting_dag=None, epsilon=0.0001, max_iterations=1e6,
                n_workers=None, jobs_per_worker=8,
                log_likelihood_size=1000, verbose=0):
@@ -331,7 +330,7 @@ class ParallelHillClimbing(BaseAlgorithm):
             "Score method used": (self.score_type, None, True)
         }
 
-        if self.score_type == "bdeu":
+        if self.score_type == "pbdeu":
             header_dictionary["Equivalent sample size"] = (self.local_scorer.esz, None, True)
 
         header_dictionary.update({
@@ -351,7 +350,8 @@ class ParallelHillClimbing(BaseAlgorithm):
         # It is assumed that none of these scores will have been computed before
         for node in tqdm(list(dag.nodes), desc="Initial scoring", disable=(verbose < 4)):
             # Compute the score for each node
-            best_score += self.local_scorer.local_score(node, tuple(dag.get_parents(node)))
+            score, _ = self.local_scorer.local_score(node, tuple(dag.get_parents(node)))
+            best_score += score
 
             # Update the metrics
             computed_checks += 1

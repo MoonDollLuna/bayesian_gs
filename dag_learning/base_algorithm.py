@@ -67,7 +67,11 @@ class BaseAlgorithm:
         "bdeu": BDeuScore,
         "ll": LLScore,
         "bic": BICScore,
-        "aic": AICScore
+        "aic": AICScore,
+        "pbdeu": ParallelBDeuScore,
+        "pll": ParallelLLScore,
+        "pbic": ParallelBICScore,
+        "paic": ParallelAICScore
     }
 
     # ATTRIBUTES #
