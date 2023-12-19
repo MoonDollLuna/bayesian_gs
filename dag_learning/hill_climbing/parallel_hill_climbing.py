@@ -407,12 +407,13 @@ class ParallelHillClimbing(BaseAlgorithm):
 
             # MAIN LOOP - Distribute the actions through the child processes and
             # keep updating the best action as the works finish
-            for (worker_action,
-                 worker_score_delta,
-                 worker_computed_checks,
-                 worker_total_checks,
-                 worker_cache_delta) in process_pool.imap_unordered(child_process_check_actions, chunked_actions,
-                                                                    chunksize=1):
+            for job_id, (worker_action,
+                         worker_score_delta,
+                         worker_computed_checks,
+                         worker_total_checks,
+                         worker_cache_delta) in enumerate(process_pool.imap_unordered(child_process_check_actions,
+                                                                                      chunked_actions,
+                                                                                      chunksize=1)):
 
                 # If the action improves the score delta, keep it
                 if worker_score_delta > score_delta:
@@ -424,13 +425,15 @@ class ParallelHillClimbing(BaseAlgorithm):
                 iteration_total_checks += worker_total_checks
                 iteration_computed_checks += worker_computed_checks
 
-                # If the verbosity is appropriate, print the results of the job
-                if verbose >= 4:
-                    # TODO PRINT RESULTS OF THE JOB
-                    pass
-
                 # Update the parent dictionary
                 self.local_scorer.score_cache.add_dictionary(worker_cache_delta)
+
+                # If the verbosity is appropriate, print the results of the job
+                if verbose >= 4:
+                    print(f"- JOB {job_id + 1} of {len(chunked_actions)}:")
+                    print(f"\t* Chosen action: {worker_action}")
+                    print(f"\t* Score delta: {worker_score_delta}")
+                    print(f"\t* Received at: {time() - initial_time} secs")
 
             # ALL WORKER JOBS FINISHED
 
