@@ -100,7 +100,6 @@ def child_process_update(dictionary, action):
     except NetworkXException:
         pass
 
-
 # Main work method
 def child_process_check_actions(chunked_action_list):
     """
@@ -317,8 +316,8 @@ class ParallelHillClimbing(BaseAlgorithm):
             dag = ExtendedDAG(self.nodes)
 
         # If necessary, obtain the maximum number of possible workers
-        if not n_workers or n_workers > len(os.sched_getaffinity(0)):
-            actual_n_workers = len(os.sched_getaffinity(0))
+        if not n_workers or n_workers > os.cpu_count():
+            actual_n_workers = os.cpu_count()
         else:
             actual_n_workers = n_workers
 
@@ -348,6 +347,16 @@ class ParallelHillClimbing(BaseAlgorithm):
         # Pre-write the CSV column names
         self._write_column_names()
 
+        if verbose >= 2:
+            print("Creating the child workers...")
+        # Pre loop - create the child processes and initialize them
+        # (share the current state of the scorer and the DAG)
+        process_pool = Pool(processes=actual_n_workers,
+                            initializer=child_process_initializer,
+                            initargs=(self.local_scorer, dag))
+        if verbose >= 2:
+            print("Child workers successfully created")
+
         # Compute the initial score - Non parallelized ################################################################
 
         # It is assumed that none of these scores will have been computed before
@@ -360,8 +369,12 @@ class ParallelHillClimbing(BaseAlgorithm):
             computed_checks += 1
             total_checks += 1
 
-        # Log the initial iteration (iteration 0) - this data should not be printed on screen
+        # Log the initial iteration (iteration 0)
         initial_time_taken = time() - initial_time
+
+        # Update the timer to not include this time in the initial iteration
+        time_taken = initial_time_taken
+
         self.results_logger.write_data_row([iterations, "None", "None", "None",
                                             best_score, best_score, computed_checks, computed_checks,
                                             total_checks, total_checks, initial_time_taken, initial_time_taken])
@@ -369,14 +382,9 @@ class ParallelHillClimbing(BaseAlgorithm):
         # If necessary, output the initial score - this will not be logged
         if verbose >= 3:
             print("Initial score: {}".format(best_score))
+            print(f"Time taken: {initial_time_taken} secs")
 
         ###############################################################################################################
-
-        # Pre loop - create the child processes and initialize them
-        # (share the current state of the scorer and the DAG)
-        process_pool = Pool(processes=actual_n_workers,
-                            initializer=child_process_initializer,
-                            initargs=(self.local_scorer, dag))
 
         # Run the loop until:
         #   - The score improvement is not above the tolerance threshold
