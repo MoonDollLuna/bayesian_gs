@@ -95,7 +95,7 @@ scoring_methods = ["bdeu", "ll", "bic", "aic"]
 n_workers = [2, 4, 8, 12, 16]
 
 # Number of jobs per worker
-n_jobs = [2, 5, 10, 20]
+n_jobs = [1, 2, 3, 4, 5]
 
 # FILE CREATION AND JSON CREATION #
 

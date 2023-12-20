@@ -317,15 +317,18 @@ class ParallelHillClimbing(BaseAlgorithm):
             dag = ExtendedDAG(self.nodes)
 
         # If necessary, obtain the maximum number of possible workers
-        if not n_workers:
-            n_workers = len(os.sched_getaffinity(0))
+        if not n_workers or n_workers > len(os.sched_getaffinity(0)):
+            actual_n_workers = len(os.sched_getaffinity(0))
+        else:
+            actual_n_workers = n_workers
 
         # MAIN LOOP #
 
         # Write the initial header info - depending on the scoring method, different data might be shown
         header_dictionary = {
             "Algorithm used": ("Parallel Hill Climbing", None, False),
-            "Number of workers used": (n_workers, None, True),
+            "Maximum number of workers used": (n_workers, None, True),
+            "Actual number of workers used": (actual_n_workers, None, True),
             "Number of jobs per worker": (jobs_per_worker, None, True),
             "Score method used": (self.score_type, None, True)
         }
@@ -371,7 +374,7 @@ class ParallelHillClimbing(BaseAlgorithm):
 
         # Pre loop - create the child processes and initialize them
         # (share the current state of the scorer and the DAG)
-        process_pool = Pool(processes=n_workers,
+        process_pool = Pool(processes=actual_n_workers,
                             initializer=child_process_initializer,
                             initargs=(self.local_scorer, dag))
 
@@ -396,7 +399,7 @@ class ParallelHillClimbing(BaseAlgorithm):
             # Compute all possible actions for the current DAG and approximately chunk them
             # (order is not kept)
             actions = find_legal_hillclimbing_operations(dag)
-            n_chunks = n_workers * jobs_per_worker
+            n_chunks = actual_n_workers * jobs_per_worker
             chunked_actions = [actions[i::n_chunks] for i in range(n_chunks)]
 
             # Print iteration info if verbosity is appropriate
@@ -461,7 +464,7 @@ class ParallelHillClimbing(BaseAlgorithm):
                 # and there is no need to further update the worker processes
                 process_pool.starmap_async(child_process_update,
                                            [(self.local_scorer.score_cache.get_delta(), action_taken)
-                                            for _ in range(n_workers)],
+                                            for _ in range(actual_n_workers)],
                                            chunksize=1)
 
                 # Wipe the parent cache
